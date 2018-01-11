@@ -80,6 +80,7 @@ u8* Aes128::encrypt(u8 plainTextInput[16]) {
 	return cipherText;
 }
 
+// Inverse cipher
 u8* Aes128::decrypt(u8 cipherTextInput[16]) {
 	
 	//cout << "-- Decryption --" << endl;
@@ -147,39 +148,39 @@ u8* Aes128::decrypt(u8 cipherTextInput[16]) {
 	return plainText;
 }
 
-void Aes128::encryptWithCtr(u8 plainTextList[4][16]) {
+u8** Aes128::encryptWithCtr(u8** plainTextList, int length) {
 	//cout << "-- CTR mode encryption --" << endl;
 	//cout << "Key: " << endl;
 	//printHex(key, 16);
 	//cout << "Initial Counter: " << endl;
 	//printHex(iv, 16);
 
-	u8* output = NULL;
+	u8** output = new u8*[length];
 
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < length; i++) {
 		//cout << "Block #" << i + 1 << endl;
 		//cout << "Input Block: " << endl;
 		//printHex(iv, 16);
 
-		output = encrypt(iv);
+		output[i] = encrypt(iv);
 		//cout << "Output Block: " << endl;
 		//printHex(output, 16);
 
-		//cout << "Plaintext: " << endl;
-		//printHex(plainTextList[i], 16);
+		cout << "Plaintext: " << endl;
+		printHex(plainTextList[i], 16);
 
-		xorByteArray(output, plainTextList[i], 16);
+		xorByteArray(output[i], plainTextList[i], BLOCK_SIZE_BYTE);
 
-		//cout << "Ciphertext: " << endl;
-		//printHex(output, 16);
+		cout << "Ciphertext: " << endl;
+		printHex(output[i], 16);
 
-		incrementCounter(15);  // Default index -> 15 (the last)
+		incrementCounter(15);  // Default index -> 15 (increment byte at the last index)
 	}
 
-	delete[] output;
+	return output;
 }
 
-void Aes128::decryptWithCtr(u8 cipherTextList[4][16]) {
+void Aes128::decryptWithCtr(u8* cipherTextList[16], int length) {
 	//cout << "-- CTR mode decryption --" << endl;
 	//cout << "Key: " << endl;
 	//printHex(key, 16);
@@ -188,7 +189,7 @@ void Aes128::decryptWithCtr(u8 cipherTextList[4][16]) {
 
 	u8* output = NULL;
 
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < length; i++) {
 		//cout << "Block #" << i + 1 << endl;
 		//cout << "Input Block: " << endl;
 		//printHex(iv, 16);
@@ -202,8 +203,8 @@ void Aes128::decryptWithCtr(u8 cipherTextList[4][16]) {
 
 		xorByteArray(output, cipherTextList[i], 16);
 
-		//cout << "Plaintext: " << endl;
-		//printHex(output, 16);
+		cout << "Plaintext: " << endl;
+		printHex(output, 16);
 
 		incrementCounter(15);
 	}
@@ -312,8 +313,68 @@ void Aes128::keyScheduleInv() {
 
 }
 
-void Aes128::encryptFile(char* fileName) {
-	ifstream infile(fileName, fstream::in);
+void Aes128::encryptFile(string fileName) {
+	ifstream infile(fileName, fstream::binary);
+
+	string newFileName;
+	newFileName.append(fileName);
+	newFileName.append("_encrypted");
+
+	ofstream outfile(newFileName, ofstream::out);
+
+	if (infile) {
+		infile.seekg(0, infile.end);
+		int length = infile.tellg();
+		infile.seekg(0, infile.beg);
+
+		// Batch block size for encryption
+		int batchBlockSize = 4;
+
+		// Allocate 2d array
+		u8** plainTextInputList = new u8*[batchBlockSize];
+		for (int i = 0; i < batchBlockSize; i++) {
+			plainTextInputList[i] = new u8[BLOCK_SIZE_BYTE];
+		}
+
+		cout << "Reading " << length << " characters.." << endl;
+		char c; // For reading
+		int index = 0;
+		while (infile.get(c)) {
+			//printHex(c);
+
+			plainTextInputList[index / BLOCK_SIZE_BYTE][index % BLOCK_SIZE_BYTE] = c;
+			index++;
+
+			if (index == batchBlockSize * BLOCK_SIZE_BYTE) {
+				// Ready to be encrypted
+				cout << "Encrypting.." << endl;
+				u8** cipherTextOutputList = encryptWithCtr(plainTextInputList, batchBlockSize);
+				for (int i = 0; i < batchBlockSize; i++) {
+					outfile.write(reinterpret_cast<char*>(cipherTextOutputList[i]), BLOCK_SIZE_BYTE);
+				}
+				free2dArray(cipherTextOutputList, batchBlockSize);
+				index = 0;
+			}
+		}
+		//cout << dec << endl;
+
+		//TODO: There might be some blocks with empty bytes -> Insert 0 for them.. What to do?
+
+		infile.close();
+		outfile.close();
+
+		free2dArray(plainTextInputList, batchBlockSize);
+	}
+}
+
+void Aes128::decryptFile(string fileName) {
+	ifstream infile(fileName, fstream::binary);
+
+	string newFileName;
+	newFileName.append(fileName);
+	newFileName.append("_new");
+
+	ofstream outfile(newFileName, ofstream::out);
 
 	if (infile) {
 		infile.seekg(0, infile.end);
@@ -337,6 +398,9 @@ void Aes128::encryptFile(char* fileName) {
 			cout << hex << (unsigned int)buffer[i] << " ";
 		}
 		cout << dec << endl;
+
+		outfile.write(buffer, length);
+		outfile.close();
 
 		delete[] buffer;
 	}

@@ -15,9 +15,10 @@ public:
 
 	u8* encrypt(u8 plainTextInput[16]);
 	u8* decrypt(u8 cipherTextInput[16]);
-	void encryptWithCtr(u8 plainTextList[4][16]);
-	void decryptWithCtr(u8 cipherTextList[4][16]);
-	void encryptFile(char* fileName);
+	u8** encryptWithCtr(u8** plainTextList, int length);
+	void decryptWithCtr(u8* cipherTextList[16], int length);
+	void encryptFile(string fileName);
+	void decryptFile(string fileName);
 	void keySchedule();
 	void keyScheduleInv();
 
@@ -41,6 +42,7 @@ public:
 	void free2dArray(u8** arr, int row);
 private:
 	int ROUND_COUNT = 10;
+	int BLOCK_SIZE_BYTE = 16;
 	u8* key = NULL;
 	u8 iv[16] = { 0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF };
 	u8** keyList = NULL;
