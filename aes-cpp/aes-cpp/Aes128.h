@@ -16,7 +16,7 @@ public:
 	u8* encrypt(u8 plainTextInput[16]);
 	u8* decrypt(u8 cipherTextInput[16]);
 	u8** encryptWithCtr(u8** plainTextList, int length);
-	void decryptWithCtr(u8* cipherTextList[16], int length);
+	u8** decryptWithCtr(u8** cipherTextList, int length);
 	void encryptFile(string fileName);
 	void decryptFile(string fileName);
 	void keySchedule();

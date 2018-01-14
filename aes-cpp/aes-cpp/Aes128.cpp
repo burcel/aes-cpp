@@ -180,36 +180,36 @@ u8** Aes128::encryptWithCtr(u8** plainTextList, int length) {
 	return output;
 }
 
-void Aes128::decryptWithCtr(u8* cipherTextList[16], int length) {
+u8** Aes128::decryptWithCtr(u8** cipherTextList, int length) {
 	//cout << "-- CTR mode decryption --" << endl;
 	//cout << "Key: " << endl;
 	//printHex(key, 16);
 	//cout << "Initial Counter: " << endl;
 	//printHex(iv, 16);
 
-	u8* output = NULL;
+	u8** output = new u8*[length];
 
 	for (int i = 0; i < length; i++) {
 		//cout << "Block #" << i + 1 << endl;
 		//cout << "Input Block: " << endl;
 		//printHex(iv, 16);
 
-		output = encrypt(iv);
+		output[i] = encrypt(iv);
 		//cout << "Output Block: " << endl;
 		//printHex(output, 16);
 
-		//cout << "Ciphertext: " << endl;
-		//printHex(cipherTextList[i], 16);
+		cout << "Ciphertext: " << endl;
+		printHex(cipherTextList[i], 16);
 
-		xorByteArray(output, cipherTextList[i], 16);
+		xorByteArray(output[i], cipherTextList[i], BLOCK_SIZE_BYTE);
 
 		cout << "Plaintext: " << endl;
-		printHex(output, 16);
+		printHex(output[i], 16);
 
 		incrementCounter(15);
 	}
 
-	delete[] output;
+	return output;
 }
 
 // Generate round keys for each round
@@ -320,7 +320,7 @@ void Aes128::encryptFile(string fileName) {
 	newFileName.append(fileName);
 	newFileName.append("_encrypted");
 
-	ofstream outfile(newFileName, ofstream::out);
+	ofstream outfile(newFileName, ofstream::binary);
 
 	if (infile) {
 		infile.seekg(0, infile.end);
@@ -353,7 +353,7 @@ void Aes128::encryptFile(string fileName) {
 					outfile.write(reinterpret_cast<char*>(cipherTextOutputList[i]), BLOCK_SIZE_BYTE);
 				}
 				free2dArray(cipherTextOutputList, batchBlockSize);
-				index = 0;
+				index = 0; // For reallocating input byte series
 			}
 		}
 		//cout << dec << endl;
@@ -372,37 +372,52 @@ void Aes128::decryptFile(string fileName) {
 
 	string newFileName;
 	newFileName.append(fileName);
-	newFileName.append("_new");
+	newFileName.append("_decrypted");
 
-	ofstream outfile(newFileName, ofstream::out);
+	ofstream outfile(newFileName, ofstream::binary);
 
 	if (infile) {
 		infile.seekg(0, infile.end);
 		int length = infile.tellg();
 		infile.seekg(0, infile.beg);
 
-		char* buffer = new char[length];
+		// Batch block size for encryption
+		int batchBlockSize = 4;
 
-		cout << "Reading " << length << " characters.." << endl;
-		infile.read(buffer, length);
-
-		if (infile) {
-			cout << "Reading is finished" << endl;
-		} else {
-			cout << "Error: Only " << infile.gcount() << " could be read!" << endl;
+		// Allocate 2d array
+		u8** cipherTextInputList = new u8*[batchBlockSize];
+		for (int i = 0; i < batchBlockSize; i++) {
+			cipherTextInputList[i] = new u8[BLOCK_SIZE_BYTE];
 		}
 
-		infile.close();
+		cout << "Reading " << length << " characters.." << endl;
+		char c; // For reading
+		int index = 0;
+		while (infile.get(c)) {
+			//printHex(c);
 
-		for (int i = 0; i < length; i++) {
-			cout << hex << (unsigned int)buffer[i] << " ";
+			cipherTextInputList[index / BLOCK_SIZE_BYTE][index % BLOCK_SIZE_BYTE] = c;
+			index++;
+
+			if (index == batchBlockSize * BLOCK_SIZE_BYTE) {
+				// Ready to be decrypted
+				cout << "Decrypting.." << endl;
+				u8** plainTextOutputList = decryptWithCtr(cipherTextInputList, batchBlockSize);
+				for (int i = 0; i < batchBlockSize; i++) {
+					outfile.write(reinterpret_cast<char*>(plainTextOutputList[i]), BLOCK_SIZE_BYTE);
+				}
+				free2dArray(plainTextOutputList, batchBlockSize);
+				index = 0; // For reallocating input byte series
+			}
 		}
 		cout << dec << endl;
 
-		outfile.write(buffer, length);
+		//TODO: There might be some blocks with empty bytes -> Insert 0 for them.. What to do?
+
+		infile.close();
 		outfile.close();
 
-		delete[] buffer;
+		free2dArray(cipherTextInputList, batchBlockSize);
 	}
 }
 
