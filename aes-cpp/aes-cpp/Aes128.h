@@ -7,6 +7,7 @@
 
 using namespace std;
 typedef uint8_t u8;
+typedef uint32_t u32;
 
 class Aes128 {
 public:
@@ -15,12 +16,14 @@ public:
 
 	u8* encrypt(u8 plainTextInput[16]);
 	u8* decrypt(u8 cipherTextInput[16]);
+	u8* encryptWithTable(u8 plainTextInput[16]);
 	u8** encryptWithCtr(u8** plainTextList, int length);
 	u8** decryptWithCtr(u8** cipherTextList, int length);
 	void encryptFile(string fileName);
 	void decryptFile(string fileName);
 	void keySchedule();
 	void keyScheduleInv();
+	void keyScheduleTableBased();
 
 	void incrementCounter(int index);
 	u8* inputFromMatrix(u8** ent);
@@ -37,16 +40,21 @@ public:
 	u8 galoisMultiplication(u8 left, u8 multiplier);
 	u8 galoisCalculation(u8 left);
 	void printHex(u8 ent);
+	void printHex(u32 ent);
 	void printHex(u8* key, int length);
 	void printMatrix(u8** key);
 	void free2dArray(u8** arr, int row);
+	void createLookupTable();
+	u32 byteArrayToInt(u8* byteArray, int length);
 private:
 	int ROUND_COUNT = 10;
 	int BLOCK_SIZE_BYTE = 16;
+	int TABLE_BASED_KEY_LIST_ROW_SIZE = 44;
 	u8* key = NULL;
 	u8 iv[16] = { 0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF };
 	u8** keyList = NULL;
 	u8** inverseKeyList = NULL;
+	u32* tableBasedKeyList = NULL;
 
 
 	u8 S_BOX[256] = {
@@ -108,9 +116,9 @@ private:
 
 	u8 M[4][4] = {
 		{ 0x02, 0x03, 0x01, 0x01 },
-	{ 0x01, 0x02, 0x03, 0x01 },
-	{ 0x01, 0x01, 0x02, 0x03 },
-	{ 0x03, 0x01, 0x01, 0x02 }
+		{ 0x01, 0x02, 0x03, 0x01 },
+		{ 0x01, 0x01, 0x02, 0x03 },
+		{ 0x03, 0x01, 0x01, 0x02 }
 	};
 
 	u8 M_INV[4][4] = {
@@ -119,6 +127,13 @@ private:
 	{ 0x0D, 0x09, 0x0E, 0x0B },
 	{ 0x0B, 0x0D, 0x09, 0x0E }
 	};
+
+
+	u32* T0;  // [256]
+	u32* T1;  // [256]
+	u32* T2;  // [256]
+	u32* T3;  // [256]
+	u32* T4;  // [256]
 };
 
 

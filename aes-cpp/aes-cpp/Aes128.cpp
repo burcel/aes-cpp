@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include  <iomanip>
 
 using namespace std;
 typedef uint8_t u8;
@@ -19,6 +20,22 @@ Aes128::~Aes128() {
 	// Deallocate key list
 	free2dArray(keyList, ROUND_COUNT + 1);
 	free2dArray(inverseKeyList, ROUND_COUNT + 1);
+	if (tableBasedKeyList != NULL) {
+		delete[] tableBasedKeyList;
+	}
+	// Deallocate table based implementation
+	if (T0 != NULL) {
+		delete[] T0;
+	}
+	if (T1 != NULL) {
+		delete[] T1;
+	}
+	if (T2 != NULL) {
+		delete[] T2;
+	}
+	if (T3 != NULL) {
+		delete[] T3;
+	}
 }
 
 u8* Aes128::encrypt(u8 plainTextInput[16]) {
@@ -146,6 +163,125 @@ u8* Aes128::decrypt(u8 cipherTextInput[16]) {
 	free2dArray(cipherText, 4);
 	
 	return plainText;
+}
+
+u8* Aes128::encryptWithTable(u8 plainTextInput[16]) {
+	/*cout << "-- Encryption --" << endl;
+	cout << "Initial input: " << endl;
+	printHex(plainTextInput, 16);
+	cout << "Initial key: " << endl;
+	printHex(key, 16);*/
+
+	if (keyList == NULL) {
+		keySchedule();
+		keyScheduleTableBased();
+	}
+
+	// Create plaintext as 32 bit unsigned integers
+	u32 s0, s1, s2, s3;
+	s0 = ((u32)plainTextInput[0] << 24) |
+		((u32)plainTextInput[1] << 16) |
+		((u32)plainTextInput[2] << 8) |
+		((u32)plainTextInput[3]);
+
+	s1 = ((u32)plainTextInput[4] << 24) |
+		((u32)plainTextInput[5] << 16) |
+		((u32)plainTextInput[6] << 8) |
+		((u32)plainTextInput[7]);
+
+	s2 = ((u32)plainTextInput[8] << 24) |
+		((u32)plainTextInput[9] << 16) |
+		((u32)plainTextInput[10] << 8) |
+		((u32)plainTextInput[11]);
+
+	s3 = ((u32)plainTextInput[12] << 24) |
+		((u32)plainTextInput[13] << 16) |
+		((u32)plainTextInput[14] << 8) |
+		((u32)plainTextInput[15]);
+
+	// First round just XORs input with key.
+	s0 = s0 ^ tableBasedKeyList[0];
+	s1 = s1 ^ tableBasedKeyList[1];
+	s2 = s2 ^ tableBasedKeyList[2];
+	s3 = s3 ^ tableBasedKeyList[3];
+
+	/*cout << "-- Round: " << 0 << endl;
+	printHex(s0);
+	printHex(s1);
+	printHex(s2);
+	printHex(s3);
+	cout << "-- Round Key" << endl;
+	printHex(tableBasedKeyList[0]);
+	printHex(tableBasedKeyList[1]);
+	printHex(tableBasedKeyList[2]);
+	printHex(tableBasedKeyList[3]);*/
+
+	u32 t0, t1, t2, t3;
+
+	for (int roundCount = 1; roundCount < ROUND_COUNT; roundCount++) {
+		t0 = T0[s0 >> 24] ^ T1[(s1 >> 16) & 0xFF] ^ T2[(s2 >> 8) & 0xFF] ^ T3[s3 & 0xFF] ^ tableBasedKeyList[roundCount * 4 + 0];
+		t1 = T0[s1 >> 24] ^ T1[(s2 >> 16) & 0xFF] ^ T2[(s3 >> 8) & 0xFF] ^ T3[s0 & 0xFF] ^ tableBasedKeyList[roundCount * 4 + 1];
+		t2 = T0[s2 >> 24] ^ T1[(s3 >> 16) & 0xFF] ^ T2[(s0 >> 8) & 0xFF] ^ T3[s1 & 0xFF] ^ tableBasedKeyList[roundCount * 4 + 2];
+		t3 = T0[s3 >> 24] ^ T1[(s0 >> 16) & 0xFF] ^ T2[(s1 >> 8) & 0xFF] ^ T3[s2 & 0xFF] ^ tableBasedKeyList[roundCount * 4 + 3];
+
+		s0 = t0;
+		s1 = t1;
+		s2 = t2;
+		s3 = t3;
+
+		/*cout << "-- Round: " << roundCount << endl;
+		printHex(s0);
+		printHex(s1);
+		printHex(s2);
+		printHex(s3);
+		cout << "-- Round Key" << endl;
+		printHex(tableBasedKeyList[roundCount * 4 + 0]);
+		printHex(tableBasedKeyList[roundCount * 4 + 1]);
+		printHex(tableBasedKeyList[roundCount * 4 + 2]);
+		printHex(tableBasedKeyList[roundCount * 4 + 3]);*/
+
+		/*if (roundCount == 2) {
+			break;
+		}*/
+	}
+
+	// Last round uses s-box directly and XORs to produce output.
+	s0 = (T4[t0 >> 24] & 0xFF000000) ^ (T4[(t1 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t2 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t3) & 0xFF] & 0x000000FF) ^ tableBasedKeyList[40];
+	s1 = (T4[t1 >> 24] & 0xFF000000) ^ (T4[(t2 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t3 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t0) & 0xFF] & 0x000000FF) ^ tableBasedKeyList[41];
+	s2 = (T4[t2 >> 24] & 0xFF000000) ^ (T4[(t3 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t0 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t1) & 0xFF] & 0x000000FF) ^ tableBasedKeyList[42];
+	s3 = (T4[t3 >> 24] & 0xFF000000) ^ (T4[(t0 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t1 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t2) & 0xFF] & 0x000000FF) ^ tableBasedKeyList[43];
+	
+	/*printf("-- Round: 10\n");
+	printHex(s0);
+	printHex(s1);
+	printHex(s2);
+	printHex(s3);
+	printf("-- Round Key\n");
+	printHex(tableBasedKeyList[40]);
+	printHex(tableBasedKeyList[41]);
+	printHex(tableBasedKeyList[42]);
+	printHex(tableBasedKeyList[43]);*/
+
+	// Create ciphertext as byte array from 32 bit unsigned integers
+	u8* cipherText = new u8[16];
+	cipherText[0] = s0 >> 24;
+	cipherText[1] = (s0 >> 16) & 0xff;
+	cipherText[2] = (s0 >> 8) & 0xff;
+	cipherText[3] = s0 & 0xff;
+	cipherText[4] = s1 >> 24;
+	cipherText[5] = (s1 >> 16) & 0xff;
+	cipherText[6] = (s1 >> 8) & 0xff;
+	cipherText[7] = s1 & 0xff;
+	cipherText[8] = s2 >> 24;
+	cipherText[9] = (s2 >> 16) & 0xff;
+	cipherText[10] = (s2 >> 8) & 0xff;
+	cipherText[11] = s2 & 0xff;
+	cipherText[12] = s3 >> 24;
+	cipherText[13] = (s3 >> 16) & 0xff;
+	cipherText[14] = (s3 >> 8) & 0xff;
+	cipherText[15] = s3 & 0xff;
+	return cipherText;
+
 }
 
 u8** Aes128::encryptWithCtr(u8** plainTextList, int length) {
@@ -311,6 +447,32 @@ void Aes128::keyScheduleInv() {
 
 	free2dArray(initialKey, 4);
 
+}
+
+// 
+void Aes128::keyScheduleTableBased() {
+	if (keyList == NULL) {
+		// Return if key list is not generated
+		return;
+	}
+
+	tableBasedKeyList = new u32[TABLE_BASED_KEY_LIST_ROW_SIZE];
+
+	for (int i = 0; i < ROUND_COUNT+1; i++) {
+		u8** roundKey = matrixFromInput(keyList[i]);
+		mirror(roundKey);  // row based -> comment this for column based
+		for (int j = 0; j < 4; j++) {
+			tableBasedKeyList[i*4 + j] = byteArrayToInt(roundKey[j], 4);
+		}
+		free2dArray(roundKey, 4);
+	}
+
+	/*for (int i = 0; i < TABLE_BASED_KEY_LIST_ROW_SIZE; i++) {
+		cout << "##S" << endl;
+		cout << i << endl;
+		printHex(tableBasedKeyList[i]);
+		cout << "##F" << endl;
+	}*/
 }
 
 void Aes128::encryptFile(string fileName) {
@@ -660,6 +822,11 @@ void Aes128::printHex(u8 ent) {
 	cout << hexFront << hex << keyByteValue << dec << endl;
 }
 
+// Print given 32 bits integer
+void Aes128::printHex(u32 ent) {
+	cout << uppercase << hex << setfill('0') << setw(8) << right << ent << dec  << endl;
+}
+
 // Print given 4 bytes
 void Aes128::printHex(u8* key, int length) {
 
@@ -706,4 +873,68 @@ void Aes128::free2dArray(u8** arr, int row) {
 		}
 		delete[] arr;
 	}
+}
+
+void Aes128::createLookupTable() {
+	// Allocate look up tables 
+	T0 = new u32[256];
+	T1 = new u32[256];
+	T2 = new u32[256];
+	T3 = new u32[256];
+	T4 = new u32[256];
+	// Generate tables
+	for (int i = 0; i < 256; i++) {
+
+		// TO
+		T0[i] = ((u32)galoisMultiplication(S_BOX[i], 0x02) << 24) |
+				((u32)galoisMultiplication(S_BOX[i], 0x01) << 16) |
+				((u32)galoisMultiplication(S_BOX[i], 0x01) << 8) |
+				((u32)galoisMultiplication(S_BOX[i], 0x03));
+
+		//printHex(T0[i]);
+
+		// T1
+		T1[i] = (galoisMultiplication(S_BOX[i], 0x03) << 24) |
+				(galoisMultiplication(S_BOX[i], 0x02) << 16) |
+				(galoisMultiplication(S_BOX[i], 0x01) << 8) |
+				(galoisMultiplication(S_BOX[i], 0x01));
+
+		//printHex(T1[i]);
+
+		// T2
+		T2[i] = (galoisMultiplication(S_BOX[i], 0x01) << 24) |
+				(galoisMultiplication(S_BOX[i], 0x03) << 16) |
+				(galoisMultiplication(S_BOX[i], 0x02) << 8) |
+				(galoisMultiplication(S_BOX[i], 0x01));
+
+		//printHex(T2[i]);
+
+		// T3
+		T3[i] = (galoisMultiplication(S_BOX[i], 0x01) << 24) |
+				(galoisMultiplication(S_BOX[i], 0x01) << 16) |
+				(galoisMultiplication(S_BOX[i], 0x03) << 8) |
+				(galoisMultiplication(S_BOX[i], 0x02));
+
+		//printHex(T2[i]);	
+
+		// T4
+		T4[i] = (S_BOX[i] << 24) |
+			(S_BOX[i] << 16) |
+			(S_BOX[i] << 8) |
+			(S_BOX[i]);
+
+		//printHex(T2[i]);	
+	}
+}
+
+// Returns 32 bits integer from given byte array
+u32 Aes128::byteArrayToInt(u8* byteArray, int length) {
+	u32 resultInt = 0;
+	for (int i = 0; i < length; i++) {
+		resultInt = resultInt | byteArray[i];
+		if (i != length-1) {
+			resultInt = resultInt << 8;
+		}
+	}
+	return resultInt;
 }
