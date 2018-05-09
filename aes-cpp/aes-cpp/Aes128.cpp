@@ -449,6 +449,52 @@ void Aes128::keyScheduleInv() {
 
 }
 
+u32* Aes128::keyScheduleFast(u8 key[16]) {
+
+	u32* T4 = new u32[256];
+	for (int i = 0; i < 256; i++) {
+		T4[i] = (S_BOX[i] << 24) |
+			(S_BOX[i] << 16) |
+			(S_BOX[i] << 8) |
+			(S_BOX[i]);
+	}
+
+	u32* rk = new u32[TABLE_BASED_KEY_LIST_ROW_SIZE];
+	rk[0] = ((u32)key[0] << 24) ^ ((u32)key[1] << 16) ^ ((u32)key[2] << 8) ^ ((u32)key[3]);
+	rk[1] = ((u32)key[4] << 24) ^ ((u32)key[5] << 16) ^ ((u32)key[6] << 8) ^ ((u32)key[7]);
+	rk[2] = ((u32)key[8] << 24) ^ ((u32)key[9] << 16) ^ ((u32)key[10] << 8) ^ ((u32)key[11]);
+	rk[3] = ((u32)key[12] << 24) ^ ((u32)key[13] << 16) ^ ((u32)key[14] << 8) ^ ((u32)key[15]);
+
+	cout << "-- Round 0:" << endl;
+	printHex(rk[0]);
+	printHex(rk[1]);
+	printHex(rk[2]);
+	printHex(rk[3]);
+
+	
+	for (int rc = 0; rc < ROUND_COUNT; rc++) {
+		u32 temp = rk[rc * 4 + 3];
+		rk[rc * 4 + 4] = rk[rc * 4] ^
+			(T4[(temp >> 16) & 0xff] & 0xff000000) ^
+			(T4[(temp >> 8) & 0xff] & 0x00ff0000) ^
+			(T4[(temp) & 0xff] & 0x0000ff00) ^
+			(T4[(temp >> 24)] & 0x000000ff) ^
+			RCON32[rc];
+		rk[rc * 4 + 5] = rk[rc * 4 + 1] ^ rk[rc * 4 + 4];
+		rk[rc * 4 + 6] = rk[rc * 4 + 2] ^ rk[rc * 4 + 5];
+		rk[rc * 4 + 7] = rk[rc * 4 + 3] ^ rk[rc * 4 + 6];
+
+		cout << "-- Round " << rc + 1 << endl;
+
+		printHex(rk[rc * 4 + 4]);
+		printHex(rk[rc * 4 + 5]);
+		printHex(rk[rc * 4 + 6]);
+		printHex(rk[rc * 4 + 7]);
+	}
+
+	return tableBasedKeyList;
+}
+
 // 
 void Aes128::keyScheduleTableBased() {
 	if (keyList == NULL) {
@@ -937,4 +983,8 @@ u32 Aes128::byteArrayToInt(u8* byteArray, int length) {
 		}
 	}
 	return resultInt;
+}
+
+void Aes128::setKey(u8 initKey[16]) {
+	key = initKey;
 }
