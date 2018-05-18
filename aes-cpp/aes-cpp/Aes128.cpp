@@ -15,6 +15,10 @@ Aes128::Aes128(u8* keyInput) {
 	// TODO: initialize IV -> Counter
 }
 
+Aes128::Aes128() {
+
+}
+
 
 Aes128::~Aes128() {
 	// Deallocate key list
@@ -987,4 +991,113 @@ u32 Aes128::byteArrayToInt(u8* byteArray, int length) {
 
 void Aes128::setKey(u8 initKey[16]) {
 	key = initKey;
+}
+
+void Aes128::exhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
+
+	u32 rk0Init, rk1Init, rk2Init, rk3Init;
+	rk0Init = rk[0];
+	rk1Init = rk[1];
+	rk2Init = rk[2];
+	rk3Init = rk[3];
+
+	u32 pt0Init, pt1Init, pt2Init, pt3Init;
+	pt0Init = pt[0];
+	pt1Init = pt[1];
+	pt2Init = pt[2];
+	pt3Init = pt[3];
+
+	for (u32 rangeCount = 0; rangeCount < range; rangeCount++) {
+
+		u32 rk0, rk1, rk2, rk3;
+		rk0 = rk0Init;
+		rk1 = rk1Init;
+		rk2 = rk2Init;
+		rk3 = rk3Init;
+
+		// Create plaintext as 32 bit unsigned integers
+		u32 s0, s1, s2, s3;
+		s0 = pt0Init;
+		s1 = pt1Init;
+		s2 = pt2Init;
+		s3 = pt3Init;
+
+		//printf(" PT: %08x %08x %08x %08x\n", pt0Init, pt1Init, pt2Init, pt3Init);
+		//printf(" CT: %08x %08x %08x %08x\n", ct[0], ct[1], ct[2], ct[3]);
+		//printf("KEY: %08x %08x %08x %08x\n", rk0Init, rk1Init, rk2Init, rk3Init);
+
+		// First round just XORs input with key.
+		s0 = s0 ^ rk0;
+		s1 = s1 ^ rk1;
+		s2 = s2 ^ rk2;
+		s3 = s3 ^ rk3;
+
+		u32 t0, t1, t2, t3;
+		for (u8 roundCount = 0; roundCount < ROUND_COUNT_MIN_1; roundCount++) {
+
+			// Calculate round key
+			u32 temp = rk3;
+			rk0 = rk0 ^
+				(t4S[(temp >> 16) & 0xff] & 0xff000000) ^
+				(t4S[(temp >> 8) & 0xff] & 0x00ff0000) ^
+				(t4S[(temp) & 0xff] & 0x0000ff00) ^
+				(t4S[(temp >> 24)] & 0x000000ff) ^
+				RCON32[roundCount];
+			rk1 = rk1 ^ rk0;
+			rk2 = rk2 ^ rk1;
+			rk3 = rk2 ^ rk3;
+
+			// Table based round function
+			t0 = t0S[s0 >> 24] ^ arithmeticRightShift(t0S[(s1 >> 16) & 0xFF], 8) ^ arithmeticRightShift(t0S[(s2 >> 8) & 0xFF], 16) ^ arithmeticRightShift(t0S[s3 & 0xFF], 24) ^ rk0;
+			t1 = t0S[s1 >> 24] ^ arithmeticRightShift(t0S[(s2 >> 16) & 0xFF], 8) ^ arithmeticRightShift(t0S[(s3 >> 8) & 0xFF], 16) ^ arithmeticRightShift(t0S[s0 & 0xFF], 24) ^ rk1;
+			t2 = t0S[s2 >> 24] ^ arithmeticRightShift(t0S[(s3 >> 16) & 0xFF], 8) ^ arithmeticRightShift(t0S[(s0 >> 8) & 0xFF], 16) ^ arithmeticRightShift(t0S[s1 & 0xFF], 24) ^ rk2;
+			t3 = t0S[s3 >> 24] ^ arithmeticRightShift(t0S[(s0 >> 16) & 0xFF], 8) ^ arithmeticRightShift(t0S[(s1 >> 8) & 0xFF], 16) ^ arithmeticRightShift(t0S[s2 & 0xFF], 24) ^ rk3;
+
+			s0 = t0;
+			s1 = t1;
+			s2 = t2;
+			s3 = t3;
+
+		}
+
+		// Calculate the last round key
+		u32 temp = rk3;
+		rk0 = rk0 ^
+			(t4S[(temp >> 16) & 0xff] & 0xff000000) ^
+			(t4S[(temp >> 8) & 0xff] & 0x00ff0000) ^
+			(t4S[(temp) & 0xff] & 0x0000ff00) ^
+			(t4S[(temp >> 24)] & 0x000000ff) ^
+			RCON32[ROUND_COUNT_MIN_1];
+		// Last round uses s-box directly and XORs to produce output.
+		s0 = (t4S[t0 >> 24] & 0xFF000000) ^ (t4S[(t1 >> 16) & 0xff] & 0x00FF0000) ^ (t4S[(t2 >> 8) & 0xff] & 0x0000FF00) ^ (t4S[(t3) & 0xFF] & 0x000000FF) ^ rk0;
+		if (s0 == ct[0]) {
+			rk1 = rk1 ^ rk0;
+			s1 = (t4S[t1 >> 24] & 0xFF000000) ^ (t4S[(t2 >> 16) & 0xff] & 0x00FF0000) ^ (t4S[(t3 >> 8) & 0xff] & 0x0000FF00) ^ (t4S[(t0) & 0xFF] & 0x000000FF) ^ rk1;
+			if (s1 == ct[1]) {
+				rk2 = rk2 ^ rk1;
+				s2 = (t4S[t2 >> 24] & 0xFF000000) ^ (t4S[(t3 >> 16) & 0xff] & 0x00FF0000) ^ (t4S[(t0 >> 8) & 0xff] & 0x0000FF00) ^ (t4S[(t1) & 0xFF] & 0x000000FF) ^ rk2;
+				if (s2 == ct[2]) {
+					rk3 = rk2 ^ rk3;
+					s3 = (t4S[t3 >> 24] & 0xFF000000) ^ (t4S[(t0 >> 16) & 0xff] & 0x00FF0000) ^ (t4S[(t1 >> 8) & 0xff] & 0x0000FF00) ^ (t4S[(t2) & 0xFF] & 0x000000FF) ^ rk3;
+					if (s3 == ct[3]) {
+						printf("! Found key : %08x %08x %08x %08x\n", rk0Init, rk1Init, rk2Init, rk3Init);
+					}
+				}
+			}
+		}
+
+		// Overflow
+		if (rk3Init == MAX_U32) {
+			rk2Init++;
+		}
+
+		// Create key as 32 bit unsigned integers
+		rk3Init++;
+	}
+}
+
+u32 Aes128::arithmeticRightShift(u32 x, int n) { return (x >> n) | (x << (-n & 31)); }
+
+void Aes128::ctr(u32 *pt, u32 *rk, u32 range) {
+
 }

@@ -165,6 +165,30 @@ void AesNI::exhaustiveSearch(u8 *pt, u8 *rk, u8 *ct, u32 range) {
 	}
 }
 
+void AesNI::ctr(u8 *pt, u8 *rk, u32 range) {
+
+	u8 ct[16] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
+
+	uint8_t computed_cipher[16];
+	__m128i key_schedule[20];
+	aes128_load_key(rk, key_schedule);
+	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
+		//cout << "Plaintext: " << endl;
+		//printHex(pt, 16);
+
+		aes128_enc(key_schedule, pt, computed_cipher);
+
+		//cout << "Ciphertext: " << endl;
+		//printHex(computed_cipher, 16);
+
+		if (memcmp(ct, computed_cipher, sizeof(ct)) == 0) {
+			cout << "! Key is found: " << endl;
+		}
+
+		incrementRoundKey(pt);
+	}
+}
+
 void AesNI::printHex(u8* key, int length) {
 
 	for (int i = 0; i < length; i++) {
