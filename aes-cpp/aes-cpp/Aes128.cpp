@@ -1098,6 +1098,93 @@ void Aes128::exhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 
 u32 Aes128::arithmeticRightShift(u32 x, int n) { return (x >> n) | (x << (-n & 31)); }
 
+void Aes128::keyExpansion(u32* key, u32* rk) {
+	u32 rk0, rk1, rk2, rk3;
+	rk0 = key[0];
+	rk1 = key[1];
+	rk2 = key[2];
+	rk3 = key[3];
+
+	rk[0] = rk0;
+	rk[1] = rk1;
+	rk[2] = rk2;
+	rk[3] = rk3;
+
+	for (u8 roundCount = 0; roundCount < ROUND_COUNT; roundCount++) {
+		u32 temp = rk3;
+		rk0 = rk0 ^ T4_3[(temp >> 16) & 0xff] ^ T4_2[(temp >> 8) & 0xff] ^ T4_1[(temp) & 0xff] ^ T4_0[(temp >> 24)] ^ RCON32[roundCount];
+		rk1 = rk1 ^ rk0;
+		rk2 = rk2 ^ rk1;
+		rk3 = rk2 ^ rk3;
+
+		rk[roundCount * 4 + 4] = rk0;
+		rk[roundCount * 4 + 5] = rk1;
+		rk[roundCount * 4 + 6] = rk2;
+		rk[roundCount * 4 + 7] = rk3;
+	}
+}
+
 void Aes128::ctr(u32 *pt, u32 *rk, u32 range) {
+
+	u32 pt0Init, pt1Init, pt2Init, pt3Init;
+	u32 s0, s1, s2, s3;
+	pt0Init = pt[0];
+	pt1Init = pt[1];
+	pt2Init = pt[2];
+	pt3Init = pt[3];
+
+	for (u32 rangeCount = 0; rangeCount < range; rangeCount++) {
+
+		//printf(" PT: %08x %08x %08x %08x\n", pt0Init, pt1Init, pt2Init, pt3Init);
+
+		// Create plaintext as 32 bit unsigned integers
+		s0 = pt0Init;
+		s1 = pt1Init;
+		s2 = pt2Init;
+		s3 = pt3Init;
+
+		// First round just XORs input with key.
+		s0 = s0 ^ rk[0];
+		s1 = s1 ^ rk[1];
+		s2 = s2 ^ rk[2];
+		s3 = s3 ^ rk[3];
+
+		u32 t0, t1, t2, t3;
+		for (u8 roundCount = 0; roundCount < ROUND_COUNT_MIN_1; roundCount++) {
+
+			// Table based round function
+			u32 rkStart = roundCount * 4 + 4;
+			t0 = t0S[s0 >> 24] ^ arithmeticRightShift(t0S[(s1 >> 16) & 0xFF], 8) ^ arithmeticRightShift(t0S[(s2 >> 8) & 0xFF], 16) ^ arithmeticRightShift(t0S[s3 & 0xFF], 24) ^ rk[rkStart];
+			t1 = t0S[s1 >> 24] ^ arithmeticRightShift(t0S[(s2 >> 16) & 0xFF], 8) ^ arithmeticRightShift(t0S[(s3 >> 8) & 0xFF], 16) ^ arithmeticRightShift(t0S[s0 & 0xFF], 24) ^ rk[rkStart + 1];
+			t2 = t0S[s2 >> 24] ^ arithmeticRightShift(t0S[(s3 >> 16) & 0xFF], 8) ^ arithmeticRightShift(t0S[(s0 >> 8) & 0xFF], 16) ^ arithmeticRightShift(t0S[s1 & 0xFF], 24) ^ rk[rkStart + 2];
+			t3 = t0S[s3 >> 24] ^ arithmeticRightShift(t0S[(s0 >> 16) & 0xFF], 8) ^ arithmeticRightShift(t0S[(s1 >> 8) & 0xFF], 16) ^ arithmeticRightShift(t0S[s2 & 0xFF], 24) ^ rk[rkStart + 3];
+
+			s0 = t0;
+			s1 = t1;
+			s2 = t2;
+			s3 = t3;
+
+		}
+
+		// Calculate the last round key
+		// Last round uses s-box directly and XORs to produce output.
+		s0 = (t4S[t0 >> 24] & 0xFF000000) ^ (t4S[(t1 >> 16) & 0xff] & 0x00FF0000) ^ (t4S[(t2 >> 8) & 0xff] & 0x0000FF00) ^ (t4S[(t3) & 0xFF] & 0x000000FF) ^ rk[40];
+		s1 = (t4S[t1 >> 24] & 0xFF000000) ^ (t4S[(t2 >> 16) & 0xff] & 0x00FF0000) ^ (t4S[(t3 >> 8) & 0xff] & 0x0000FF00) ^ (t4S[(t0) & 0xFF] & 0x000000FF) ^ rk[41];
+		s2 = (t4S[t2 >> 24] & 0xFF000000) ^ (t4S[(t3 >> 16) & 0xff] & 0x00FF0000) ^ (t4S[(t0 >> 8) & 0xff] & 0x0000FF00) ^ (t4S[(t1) & 0xFF] & 0x000000FF) ^ rk[42];
+		s3 = (t4S[t3 >> 24] & 0xFF000000) ^ (t4S[(t0 >> 16) & 0xff] & 0x00FF0000) ^ (t4S[(t1 >> 8) & 0xff] & 0x0000FF00) ^ (t4S[(t2) & 0xFF] & 0x000000FF) ^ rk[43];
+
+		//printf(" CT: %08x %08x %08x %08x\n", s0, s1, s1, s3);
+		
+		// Overflow
+		if (pt3Init == MAX_U32) {
+			pt2Init++;
+		}
+
+		// Create key as 32 bit unsigned integers
+		pt3Init++;
+	}
+
+	printf(" PT: %08x %08x %08x %08x\n", pt0Init, pt1Init, pt2Init, pt3Init);
+	printf(" CT: %08x %08x %08x %08x\n", s0, s1, s1, s3);
 
 }

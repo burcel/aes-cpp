@@ -187,6 +187,12 @@ void AesNI::ctr(u8 *pt, u8 *rk, u32 range) {
 
 		incrementRoundKey(pt);
 	}
+
+	cout << "Plaintext: " << endl;
+	printHex(pt, 16);
+
+	cout << "Ciphertext: " << endl;
+	printHex(computed_cipher, 16);
 }
 
 void AesNI::printHex(u8* key, int length) {
