@@ -181,9 +181,9 @@ void AesNI::ctr(u8 *pt, u8 *rk, u32 range) {
 		//cout << "Ciphertext: " << endl;
 		//printHex(computed_cipher, 16);
 
-		if (memcmp(ct, computed_cipher, sizeof(ct)) == 0) {
-			cout << "! Key is found: " << endl;
-		}
+		//if (memcmp(ct, computed_cipher, sizeof(ct)) == 0) {
+		//	cout << "! Key is found: " << endl;
+		//}
 
 		incrementRoundKey(pt);
 	}

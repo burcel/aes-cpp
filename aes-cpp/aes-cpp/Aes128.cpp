@@ -977,6 +977,59 @@ void Aes128::createLookupTable() {
 	}
 }
 
+void Aes128::smallAEScreateLookupTable() {
+	u16 S[16] = { 0x6, 0xb, 0x5, 0x4, 0x2, 0xe, 0x7, 0xa, 0x9, 0xd, 0xf, 0xc, 0x3, 0x1, 0x0, 0x8 };
+	// Allocate look up tables 
+	u16* T0 = new u16[16];
+	u16* T1 = new u16[16];
+	u16* T2 = new u16[16];
+	u16* T3 = new u16[16];
+	u16* T4 = new u16[16];
+	// Generate tables
+	for (int i = 0; i < 16; i++) {
+
+		// TO
+		T0[i] = ((u16)galoisMultiplication(S[i], 0x02) << 12) |
+			((u16)galoisMultiplication(S[i], 0x01) << 8) |
+			((u16)galoisMultiplication(S[i], 0x01) << 4) |
+			((u16)galoisMultiplication(S[i], 0x03));
+
+		//printf("%04x, ", T0[i]);
+
+		// T1
+		T1[i] = ((u16)galoisMultiplication(S[i], 0x03) << 12) |
+			((u16)galoisMultiplication(S[i], 0x02) << 8) |
+			((u16)galoisMultiplication(S[i], 0x01) << 4) |
+			((u16)galoisMultiplication(S[i], 0x01));
+
+		 //printf("%04x\n", T1[i]);
+
+		// T2
+		T2[i] = ((u16)galoisMultiplication(S[i], 0x01) << 12) |
+			((u16)galoisMultiplication(S[i], 0x03) << 8) |
+			((u16)galoisMultiplication(S[i], 0x02) << 4) |
+			((u16)galoisMultiplication(S[i], 0x01));
+
+		//printf("%04x\n", T2[i]);
+
+		// T3
+		T3[i] = ((u16)galoisMultiplication(S[i], 0x01) << 12) |
+			((u16)galoisMultiplication(S[i], 0x01) << 8) |
+			((u16)galoisMultiplication(S[i], 0x03) << 4) |
+			((u16)galoisMultiplication(S[i], 0x02));
+
+		//printf("%04x\n", T3[i]);
+
+		// T4
+		T4[i] = (S[i] << 12) |
+			(S[i] << 8) |
+			(S[i] << 4) |
+			(S[i]);
+
+		printf("%04x\n", T4[i]);
+	}
+}
+
 // Returns 32 bits integer from given byte array
 u32 Aes128::byteArrayToInt(u8* byteArray, int length) {
 	u32 resultInt = 0;

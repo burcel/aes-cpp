@@ -7,6 +7,7 @@
 
 using namespace std;
 typedef uint8_t u8;
+typedef uint16_t u16;
 typedef uint32_t u32;
 typedef unsigned long int		uli;
 typedef unsigned long long	    ull;
@@ -54,6 +55,7 @@ public:
 	void printMatrix(u8** key);
 	void free2dArray(u8** arr, int row);
 	void createLookupTable();
+	void smallAEScreateLookupTable();
 	u32 byteArrayToInt(u8* byteArray, int length);
 
 	void exhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range);
