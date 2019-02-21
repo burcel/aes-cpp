@@ -15,37 +15,39 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Aes128.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="rijndael-alg-fst.h">
+    <ClInclude Include="aes-ni.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="aes-ni.h">
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="aes-cpp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Aes128.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rijndael-alg-fst.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="aes-ni.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="aes-cpp.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

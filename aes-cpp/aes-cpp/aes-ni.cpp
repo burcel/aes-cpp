@@ -1,182 +1,94 @@
 #include "stdafx.h"
-#include <iostream>
-#include <string>
 #include "aes-ni.h"
-#include <wmmintrin.h>
-#include <emmintrin.h>
-#include <smmintrin.h>
 
 using namespace std;
 
-#define DO_ENC_BLOCK(m,k) \
-    do{\
-        m = _mm_xor_si128       (m, k[ 0]); \
-        m = _mm_aesenc_si128    (m, k[ 1]); \
-        m = _mm_aesenc_si128    (m, k[ 2]); \
-        m = _mm_aesenc_si128    (m, k[ 3]); \
-        m = _mm_aesenc_si128    (m, k[ 4]); \
-        m = _mm_aesenc_si128    (m, k[ 5]); \
-        m = _mm_aesenc_si128    (m, k[ 6]); \
-        m = _mm_aesenc_si128    (m, k[ 7]); \
-        m = _mm_aesenc_si128    (m, k[ 8]); \
-        m = _mm_aesenc_si128    (m, k[ 9]); \
-        m = _mm_aesenclast_si128(m, k[10]);\
-    }while(0)
+#define KEYEXP128_H(K1, K2, I, S) _mm_xor_si128(aes128_keyexpand(K1), _mm_shuffle_epi32(_mm_aeskeygenassist_si128(K2, I), S))
+#define KEYEXP128(K, I) KEYEXP128_H(K, K, I, 0xff)
+#define KEYEXP192(K1, K2, I) KEYEXP128_H(K1, K2, I, 0x55)
+#define KEYEXP192_2(K1, K2) aes192_keyexpand_2(K1, K2)
+#define KEYEXP256(K1, K2, I)  KEYEXP128_H(K1, K2, I, 0xff)
+#define KEYEXP256_2(K1, K2) KEYEXP128_H(K1, K2, 0x00, 0xaa)
 
-#define DO_DEC_BLOCK(m,k) \
-    do{\
-        m = _mm_xor_si128       (m, k[10+0]); \
-        m = _mm_aesdec_si128    (m, k[10+1]); \
-        m = _mm_aesdec_si128    (m, k[10+2]); \
-        m = _mm_aesdec_si128    (m, k[10+3]); \
-        m = _mm_aesdec_si128    (m, k[10+4]); \
-        m = _mm_aesdec_si128    (m, k[10+5]); \
-        m = _mm_aesdec_si128    (m, k[10+6]); \
-        m = _mm_aesdec_si128    (m, k[10+7]); \
-        m = _mm_aesdec_si128    (m, k[10+8]); \
-        m = _mm_aesdec_si128    (m, k[10+9]); \
-        m = _mm_aesdeclast_si128(m, k[0]);\
-    }while(0)
-
-#define AES_128_key_exp(k, rcon) aes_128_key_expansion(k, _mm_aeskeygenassist_si128(k, rcon))
-
-static __m128i aes_128_key_expansion(__m128i key, __m128i keygened) {
-	keygened = _mm_shuffle_epi32(keygened, _MM_SHUFFLE(3, 3, 3, 3));
+__m128i aesNi128KeyExpansion(__m128i key, __m128i keyGenerated) {
+	keyGenerated = _mm_shuffle_epi32(keyGenerated, _MM_SHUFFLE(3, 3, 3, 3));
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
-	return _mm_xor_si128(key, keygened);
+	return _mm_xor_si128(key, keyGenerated);
 }
 
-//public API
-static void aes128_load_key_enc_only(uint8_t *enc_key, __m128i *key_schedule) {
-	key_schedule[0] = _mm_loadu_si128((const __m128i*) enc_key);
-	key_schedule[1] = AES_128_key_exp(key_schedule[0], 0x01);
-	key_schedule[2] = AES_128_key_exp(key_schedule[1], 0x02);
-	key_schedule[3] = AES_128_key_exp(key_schedule[2], 0x04);
-	key_schedule[4] = AES_128_key_exp(key_schedule[3], 0x08);
-	key_schedule[5] = AES_128_key_exp(key_schedule[4], 0x10);
-	key_schedule[6] = AES_128_key_exp(key_schedule[5], 0x20);
-	key_schedule[7] = AES_128_key_exp(key_schedule[6], 0x40);
-	key_schedule[8] = AES_128_key_exp(key_schedule[7], 0x80);
-	key_schedule[9] = AES_128_key_exp(key_schedule[8], 0x1B);
-	key_schedule[10] = AES_128_key_exp(key_schedule[9], 0x36);
+void aesNi128LoadKey(uint8_t *encryptionKey, __m128i *rk) {
+	rk[0]  = _mm_loadu_si128((const __m128i*) encryptionKey);
+	rk[1]  = aesNi128KeyExpansion(rk[0], _mm_aeskeygenassist_si128(rk[0], 0x01));
+	rk[2]  = aesNi128KeyExpansion(rk[1], _mm_aeskeygenassist_si128(rk[1], 0x02));
+	rk[3]  = aesNi128KeyExpansion(rk[2], _mm_aeskeygenassist_si128(rk[2], 0x04));
+	rk[4]  = aesNi128KeyExpansion(rk[3], _mm_aeskeygenassist_si128(rk[3], 0x08));
+	rk[5]  = aesNi128KeyExpansion(rk[4], _mm_aeskeygenassist_si128(rk[4], 0x10));
+	rk[6]  = aesNi128KeyExpansion(rk[5], _mm_aeskeygenassist_si128(rk[5], 0x20));
+	rk[7]  = aesNi128KeyExpansion(rk[6], _mm_aeskeygenassist_si128(rk[6], 0x40));
+	rk[8]  = aesNi128KeyExpansion(rk[7], _mm_aeskeygenassist_si128(rk[7], 0x80));
+	rk[9]  = aesNi128KeyExpansion(rk[8], _mm_aeskeygenassist_si128(rk[8], 0x1B));
+	rk[10] = aesNi128KeyExpansion(rk[9], _mm_aeskeygenassist_si128(rk[9], 0x36));
 }
 
-static void aes128_load_key(uint8_t *enc_key, __m128i *key_schedule) {
-	aes128_load_key_enc_only(enc_key, key_schedule);
+void aesNi128BlockEncryption(__m128i *rk, uint8_t *pt, uint8_t *ct) {
+	__m128i m = _mm_loadu_si128((__m128i *) pt);
 
-	// generate decryption keys in reverse order.
-	// k[10] is shared by last encryption and first decryption rounds
-	// k[0] is shared by first encryption round and last decryption round (and is the original user key)
-	// For some implementation reasons, decryption key schedule is NOT the encryption key schedule in reverse order
-	key_schedule[11] = _mm_aesimc_si128(key_schedule[9]);
-	key_schedule[12] = _mm_aesimc_si128(key_schedule[8]);
-	key_schedule[13] = _mm_aesimc_si128(key_schedule[7]);
-	key_schedule[14] = _mm_aesimc_si128(key_schedule[6]);
-	key_schedule[15] = _mm_aesimc_si128(key_schedule[5]);
-	key_schedule[16] = _mm_aesimc_si128(key_schedule[4]);
-	key_schedule[17] = _mm_aesimc_si128(key_schedule[3]);
-	key_schedule[18] = _mm_aesimc_si128(key_schedule[2]);
-	key_schedule[19] = _mm_aesimc_si128(key_schedule[1]);
+	m = _mm_xor_si128(m, rk[0]);
+	m = _mm_aesenc_si128(m, rk[1]);
+	m = _mm_aesenc_si128(m, rk[2]);
+	m = _mm_aesenc_si128(m, rk[3]);
+	m = _mm_aesenc_si128(m, rk[4]);
+	m = _mm_aesenc_si128(m, rk[5]);
+	m = _mm_aesenc_si128(m, rk[6]);
+	m = _mm_aesenc_si128(m, rk[7]);
+	m = _mm_aesenc_si128(m, rk[8]);
+	m = _mm_aesenc_si128(m, rk[9]);
+	m = _mm_aesenclast_si128(m, rk[10]);
+
+	_mm_storeu_si128((__m128i *) ct, m);
 }
 
-static void aes128_enc(__m128i *key_schedule, uint8_t *plainText, uint8_t *cipherText) {
-	__m128i m = _mm_loadu_si128((__m128i *) plainText);
-
-	DO_ENC_BLOCK(m, key_schedule);
-
-	_mm_storeu_si128((__m128i *) cipherText, m);
-}
-
-static void aes128_dec(__m128i *key_schedule, uint8_t *cipherText, uint8_t *plainText) {
-	__m128i m = _mm_loadu_si128((__m128i *) cipherText);
-
-	DO_DEC_BLOCK(m, key_schedule);
-
-	_mm_storeu_si128((__m128i *) plainText, m);
-}
-
-//return 0 if no error
-//1 if encryption failed
-//2 if decryption failed
-//3 if both failed
-static int aes128_self_test(void) {
-	uint8_t plain[] = { 0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34 };
-	uint8_t enc_key[] = { 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
-	uint8_t cipher[] = { 0x39, 0x25, 0x84, 0x1d, 0x02, 0xdc, 0x09, 0xfb, 0xdc, 0x11, 0x85, 0x97, 0x19, 0x6a, 0x0b, 0x32 };
-	uint8_t computed_cipher[16];
-	uint8_t computed_plain[16];
-	int out = 0;
+u8* aesNi128EncryptOneBlock(u8 *pt, u8 *rk) {
+	u8 computed_cipher[16];
 	__m128i key_schedule[20];
-	aes128_load_key(enc_key, key_schedule);
-	aes128_enc(key_schedule, plain, computed_cipher);
-	aes128_dec(key_schedule, cipher, computed_plain);
-	if (memcmp(cipher, computed_cipher, sizeof(cipher))) out = 1;
-	if (memcmp(plain, computed_plain, sizeof(plain))) out |= 2;
-	return out;
-}
-
-void incrementRoundKey(u8 *rk) {
-	rk[15]++;
-	for (int keySize = 0; keySize < 16; keySize++) {
-		if (rk[15 - keySize] == 0x00) {
-			if (keySize != 15) {
-				rk[14 - keySize]++;
-			} 
-		} else {
-			break;
-		}
-	}
-}
-
-
-AesNI::AesNI() {
-
-}
-
-
-AesNI::~AesNI() {
-	
-}
-
-u8* AesNI::encrypt(u8 *pt, u8 *rk) {
-	uint8_t computed_cipher[16];
-	__m128i key_schedule[20];
-	aes128_load_key(rk, key_schedule);
-	aes128_enc(key_schedule, pt, computed_cipher);
+	aesNi128LoadKey(rk, key_schedule);
+	aesNi128BlockEncryption(key_schedule, pt, computed_cipher);
 	return computed_cipher;
 }
 
-void AesNI::exhaustiveSearch(u8 *pt, u8 *rk, u8 *ct, u32 range) {
-	uint8_t computed_cipher[16];
+void aesNi128ExhaustiveSearch(u8 *pt, u8 *rk, u8 *ct, u32 range) {
+	u8 computed_cipher[16];
 	__m128i key_schedule[20];
 	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
 		//printHex(rk, 16);
 
-		aes128_load_key(rk, key_schedule);
-		aes128_enc(key_schedule, pt, computed_cipher);
+		aesNi128LoadKey(rk, key_schedule);
+		aesNi128BlockEncryption(key_schedule, pt, computed_cipher);
 
 		if (memcmp(ct, computed_cipher, sizeof(ct)) == 0) {
 			cout << "! Key is found: " << endl;
+			printHex(rk, 16);
 		}
 
-		incrementRoundKey(rk);
+		incrementByteArray(rk);
 	}
 }
 
-void AesNI::ctr(u8 *pt, u8 *rk, u32 range) {
+
+void aesNi128Ctr(u8 *pt, u8 *rk, u32 range) {
 
 	u8 ct[16] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
 
 	uint8_t computed_cipher[16];
 	__m128i key_schedule[20];
-	aes128_load_key(rk, key_schedule);
+	aesNi128LoadKey(rk, key_schedule);
 	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
 		//cout << "Plaintext: " << endl;
 		//printHex(pt, 16);
 
-		aes128_enc(key_schedule, pt, computed_cipher);
+		aesNi128BlockEncryption(key_schedule, pt, computed_cipher);
 
 		//cout << "Ciphertext: " << endl;
 		//printHex(computed_cipher, 16);
@@ -185,7 +97,7 @@ void AesNI::ctr(u8 *pt, u8 *rk, u32 range) {
 		//	cout << "! Key is found: " << endl;
 		//}
 
-		incrementRoundKey(pt);
+		incrementByteArray(pt);
 	}
 
 	cout << "Plaintext: " << endl;
@@ -195,15 +107,93 @@ void AesNI::ctr(u8 *pt, u8 *rk, u32 range) {
 	printHex(computed_cipher, 16);
 }
 
-void AesNI::printHex(u8* key, int length) {
-
+void printHex(u8* key, int length) {
 	for (int i = 0; i < length; i++) {
 		unsigned int keyByteValue = key[i];
-		string hexFront = "";
-		if (keyByteValue < 16) {
-			hexFront = "0";
+		printf("%02x", key[i]);
+		if (i % 4 == 3) {
+			printf(" ");
 		}
-		cout << hexFront << hex << keyByteValue << dec << " ";
 	}
-	cout << endl;
+	printf("\n");
+}
+
+void incrementByteArray(u8 *rk) {
+	rk[15]++;
+	for (int keySize = 0; keySize < 16; keySize++) {
+		if (rk[15 - keySize] == 0x00) {
+			if (keySize != 15) {
+				rk[14 - keySize]++;
+			}
+		} else {
+			break;
+		}
+	}
+}
+
+void incrementM128i(__m128i var) {
+	var = reverseBytesM128i(var);
+	//var++;
+	var = reverseBytesM128i(var);
+}
+
+__m128i reverseBytesM128i(__m128i x) {
+	// Swap bytes in each 16-bit word:
+	__m128i a = _mm_or_si128(_mm_slli_epi16(x, 8), _mm_srli_epi16(x, 8));
+	// Reverse all 16-bit words in 64-bit halves:
+	a = _mm_shufflelo_epi16(a, _MM_SHUFFLE(0, 1, 2, 3));
+	a = _mm_shufflehi_epi16(a, _MM_SHUFFLE(0, 1, 2, 3));
+	// Reverse 64-bit halves:
+	return _mm_shuffle_epi32(a, _MM_SHUFFLE(1, 0, 3, 2));
+}
+
+void printM128i(__m128i var) {
+	uint8_t *val = (uint8_t*)&var;
+	for (int i = 0; i < 16; i++) {
+		printf("%02x ", val[i]);
+	}
+	printf("\n");
+}
+
+void mainAesNi128ExhaustiveSearch() {
+	cout << endl << "########## AES-128 NI Exhaustive Search Implementation ##########" << endl << endl;
+
+	u8 pt[16] = { 0x32, 0x43, 0xF6, 0xA8, 0x88, 0x5A, 0x30, 0x8D, 0x31, 0x31, 0x98, 0xA2, 0xE0, 0x37, 0x07, 0x34 };
+	u8 ct[16] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
+	u8 rk[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x30 };
+
+	u32 p = 25;
+	double keyRange = pow(2, p);
+	u32 range = ceil(keyRange);
+	cout << "POWER: " << p << " Range: " << range << endl;
+	cout << "------------------------------------" << endl;
+
+	clock_t beginTime = clock();
+
+	aesNi128ExhaustiveSearch(pt, rk, ct, range);
+	cout << "------------------------------------" << endl;
+	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
+	cout << "------------------------------------" << endl;
+
+}
+
+void mainAesNi128Ctr() {
+	cout << endl << "########## AES-128 NI Counter Mode Implementation ##########" << endl << endl;
+
+	u8 pt[16] = { 0x32, 0x43, 0xF6, 0xA8, 0x88, 0x5A, 0x30, 0x8D, 0x31, 0x31, 0x98, 0xA2, 0xE0, 0x37, 0x07, 0x34 };
+	u8 ct[16] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
+	u8 rk[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+
+	u32 p = 25;
+	double keyRange = pow(2, p);
+	u32 range = ceil(keyRange);
+	cout << "POWER: " << p << " Range: " << range << endl;
+	cout << "------------------------------------" << endl;
+
+	clock_t beginTime = clock();
+
+	aesNi128Ctr(pt, rk, range);
+	cout << "------------------------------------" << endl;
+	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
+	cout << "------------------------------------" << endl;
 }
