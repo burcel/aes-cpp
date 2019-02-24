@@ -12,16 +12,30 @@ typedef uint8_t  u8;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
-// 128 Mains
+#define AES_128_KEY_LEN 16
+#define AES_192_KEY_LEN 24
+#define AES_256_KEY_LEN 32
+
+#define AES_128_KEY_SIZE 11
+#define AES_192_KEY_SIZE 13
+#define AES_256_KEY_SIZE 15
+
+void aesNiBlockEncryption(__m128i *rk, u8 *pt, u8 *ct, int keySize);
+void aesNiExhaustiveSearch(u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen);
+void aesNiCtr(u8 *pt, u8 *rk, u32 range, int keySize, int keyLen);
+
+// 128
 void mainAesNi128ExhaustiveSearch();
 void mainAesNi128Ctr();
-// 128 Internal Functions
-void aesNi128ExhaustiveSearch(u8 *pt, u8 *rk, u8 *ct, u32 range);
-void aesNi128Ctr(u8 *pt, u8 *rk, u32 range);
-void aesNi128BlockEncryption(__m128i *rk, uint8_t *pt, uint8_t *ct);
-void aesNi128LoadKey(uint8_t *encryptionKey, __m128i *rk);
-__m128i aesNi128KeyExpansion(__m128i key, __m128i keyGenerated);
-u8* aesNi128EncryptOneBlock(u8 *pt, u8 *rk);
+
+// 192
+void mainAesNi192ExhaustiveSearch();
+void mainAesNi192Ctr();
+
+// 256
+void mainAesNi256ExhaustiveSearch();
+void mainAesNi256Ctr();
+
 
 // Utils
 void printM128i(__m128i var);
@@ -29,3 +43,8 @@ void printHex(u8* key, int length);
 void incrementByteArray(u8 *rk);
 void incrementM128i(__m128i var);
 __m128i reverseBytesM128i(__m128i x);
+
+// Key Expansion
+__m128i aes128KeyExpand(__m128i key);
+__m128i aes192KeyExpand2(__m128i key, __m128i key2);
+void aesNiKeyExpansion(u8 *cipherKey, __m128i *rk, int keyLen);

@@ -3,38 +3,100 @@
 
 using namespace std;
 
-#define KEYEXP128_H(K1, K2, I, S) _mm_xor_si128(aes128_keyexpand(K1), _mm_shuffle_epi32(_mm_aeskeygenassist_si128(K2, I), S))
+#define KEYEXP128_H(K1, K2, I, S) _mm_xor_si128(aes128KeyExpand(K1), _mm_shuffle_epi32(_mm_aeskeygenassist_si128(K2, I), S))
 #define KEYEXP128(K, I) KEYEXP128_H(K, K, I, 0xff)
 #define KEYEXP192(K1, K2, I) KEYEXP128_H(K1, K2, I, 0x55)
-#define KEYEXP192_2(K1, K2) aes192_keyexpand_2(K1, K2)
+#define KEYEXP192_2(K1, K2) aes192KeyExpand2(K1, K2)
 #define KEYEXP256(K1, K2, I)  KEYEXP128_H(K1, K2, I, 0xff)
 #define KEYEXP256_2(K1, K2) KEYEXP128_H(K1, K2, 0x00, 0xaa)
 
-__m128i aesNi128KeyExpansion(__m128i key, __m128i keyGenerated) {
-	keyGenerated = _mm_shuffle_epi32(keyGenerated, _MM_SHUFFLE(3, 3, 3, 3));
+__m128i aes128KeyExpand(__m128i key) {
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
-	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
-	return _mm_xor_si128(key, keyGenerated);
+	return _mm_xor_si128(key, _mm_slli_si128(key, 4));
 }
 
-void aesNi128LoadKey(uint8_t *encryptionKey, __m128i *rk) {
-	rk[0]  = _mm_loadu_si128((const __m128i*) encryptionKey);
-	rk[1]  = aesNi128KeyExpansion(rk[0], _mm_aeskeygenassist_si128(rk[0], 0x01));
-	rk[2]  = aesNi128KeyExpansion(rk[1], _mm_aeskeygenassist_si128(rk[1], 0x02));
-	rk[3]  = aesNi128KeyExpansion(rk[2], _mm_aeskeygenassist_si128(rk[2], 0x04));
-	rk[4]  = aesNi128KeyExpansion(rk[3], _mm_aeskeygenassist_si128(rk[3], 0x08));
-	rk[5]  = aesNi128KeyExpansion(rk[4], _mm_aeskeygenassist_si128(rk[4], 0x10));
-	rk[6]  = aesNi128KeyExpansion(rk[5], _mm_aeskeygenassist_si128(rk[5], 0x20));
-	rk[7]  = aesNi128KeyExpansion(rk[6], _mm_aeskeygenassist_si128(rk[6], 0x40));
-	rk[8]  = aesNi128KeyExpansion(rk[7], _mm_aeskeygenassist_si128(rk[7], 0x80));
-	rk[9]  = aesNi128KeyExpansion(rk[8], _mm_aeskeygenassist_si128(rk[8], 0x1B));
-	rk[10] = aesNi128KeyExpansion(rk[9], _mm_aeskeygenassist_si128(rk[9], 0x36));
+__m128i aes192KeyExpand2(__m128i key, __m128i key2) {
+	key = _mm_shuffle_epi32(key, 0xff);
+	key2 = _mm_xor_si128(key2, _mm_slli_si128(key2, 4));
+	return _mm_xor_si128(key, key2);
 }
 
-void aesNi128BlockEncryption(__m128i *rk, uint8_t *pt, uint8_t *ct) {
+void aesNiKeyExpansion(u8 *cipherKey, __m128i *rk, int keyLen) {
+	switch (keyLen) {
+		case AES_128_KEY_LEN: {
+			/* 128 bit key setup */
+			rk[0] = _mm_loadu_si128((const __m128i*) cipherKey);
+			rk[1] = KEYEXP128(rk[0], 0x01);
+			rk[2] = KEYEXP128(rk[1], 0x02);
+			rk[3] = KEYEXP128(rk[2], 0x04);
+			rk[4] = KEYEXP128(rk[3], 0x08);
+			rk[5] = KEYEXP128(rk[4], 0x10);
+			rk[6] = KEYEXP128(rk[5], 0x20);
+			rk[7] = KEYEXP128(rk[6], 0x40);
+			rk[8] = KEYEXP128(rk[7], 0x80);
+			rk[9] = KEYEXP128(rk[8], 0x1B);
+			rk[10] = KEYEXP128(rk[9], 0x36);
+			break;
+		}
+		case AES_192_KEY_LEN: {
+			/* 192 bit key setup */
+			__m128i temp[2];
+			rk[0] = _mm_loadu_si128((const __m128i*) cipherKey);
+			rk[1] = _mm_loadu_si128((const __m128i*) (cipherKey + 16));
+			rk[1] = _mm_and_si128(rk[1], _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF));
+			temp[0] = KEYEXP192(rk[0], rk[1], 0x01);
+			temp[1] = KEYEXP192_2(temp[0], rk[1]);
+			rk[1] = _mm_xor_si128(rk[1], _mm_slli_si128(temp[0], 8));
+			rk[2] = _mm_xor_si128(_mm_srli_si128(temp[0], 8), _mm_slli_si128(temp[1], 8));
+			rk[3] = KEYEXP192(temp[0], temp[1], 0x02);
+			rk[4] = KEYEXP192_2(rk[3], temp[1]);
+			temp[0] = KEYEXP192(rk[3], rk[4], 0x04);
+			temp[1] = KEYEXP192_2(temp[0], rk[4]);
+			rk[4] = _mm_and_si128(rk[4], _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF));
+			rk[4] = _mm_xor_si128(rk[4], _mm_slli_si128(temp[0], 8));
+			rk[5] = _mm_xor_si128(_mm_srli_si128(temp[0], 8), _mm_slli_si128(temp[1], 8));
+			rk[6] = KEYEXP192(temp[0], temp[1], 0x08);
+			rk[7] = KEYEXP192_2(rk[6], temp[1]);
+			temp[0] = KEYEXP192(rk[6], rk[7], 0x10);
+			temp[1] = KEYEXP192_2(temp[0], rk[7]);
+			rk[7] = _mm_and_si128(rk[7], _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF));
+			rk[7] = _mm_xor_si128(rk[7], _mm_slli_si128(temp[0], 8));
+			rk[8] = _mm_xor_si128(_mm_srli_si128(temp[0], 8), _mm_slli_si128(temp[1], 8));
+			rk[9] = KEYEXP192(temp[0], temp[1], 0x20);
+			rk[10] = KEYEXP192_2(rk[9], temp[1]);
+			temp[0] = KEYEXP192(rk[9], rk[10], 0x40);
+			temp[1] = KEYEXP192_2(temp[0], rk[10]);
+			rk[10] = _mm_and_si128(rk[10], _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF));
+			rk[10] = _mm_xor_si128(rk[10], _mm_slli_si128(temp[0], 8));
+			rk[11] = _mm_xor_si128(_mm_srli_si128(temp[0], 8), _mm_slli_si128(temp[1], 8));
+			rk[12] = KEYEXP192(temp[0], temp[1], 0x80);
+			break;
+		}
+		case AES_256_KEY_LEN: {
+			/* 256 bit key setup */
+			rk[0] = _mm_loadu_si128((const __m128i*) cipherKey);
+			rk[1] = _mm_loadu_si128((const __m128i*) (cipherKey + 16));
+			rk[2] = KEYEXP256(rk[0], rk[1], 0x01);
+			rk[3] = KEYEXP256_2(rk[1], rk[2]);
+			rk[4] = KEYEXP256(rk[2], rk[3], 0x02);
+			rk[5] = KEYEXP256_2(rk[3], rk[4]);
+			rk[6] = KEYEXP256(rk[4], rk[5], 0x04);
+			rk[7] = KEYEXP256_2(rk[5], rk[6]);
+			rk[8] = KEYEXP256(rk[6], rk[7], 0x08);
+			rk[9] = KEYEXP256_2(rk[7], rk[8]);
+			rk[10] = KEYEXP256(rk[8], rk[9], 0x10);
+			rk[11] = KEYEXP256_2(rk[9], rk[10]);
+			rk[12] = KEYEXP256(rk[10], rk[11], 0x20);
+			rk[13] = KEYEXP256_2(rk[11], rk[12]);
+			rk[14] = KEYEXP256(rk[12], rk[13], 0x40);
+			break;
+		}
+	}
+}
+
+void aesNiBlockEncryption(__m128i *rk, u8 *pt, u8 *ct, int keySize) {
 	__m128i m = _mm_loadu_si128((__m128i *) pt);
-
 	m = _mm_xor_si128(m, rk[0]);
 	m = _mm_aesenc_si128(m, rk[1]);
 	m = _mm_aesenc_si128(m, rk[2]);
@@ -45,66 +107,57 @@ void aesNi128BlockEncryption(__m128i *rk, uint8_t *pt, uint8_t *ct) {
 	m = _mm_aesenc_si128(m, rk[7]);
 	m = _mm_aesenc_si128(m, rk[8]);
 	m = _mm_aesenc_si128(m, rk[9]);
-	m = _mm_aesenclast_si128(m, rk[10]);
+	if (keySize == AES_192_KEY_SIZE || keySize == AES_256_KEY_SIZE) {
+		m = _mm_aesenc_si128(m, rk[10]);
+		m = _mm_aesenc_si128(m, rk[11]);
+		if (keySize == AES_256_KEY_SIZE) {
+			m = _mm_aesenc_si128(m, rk[12]);
+			m = _mm_aesenc_si128(m, rk[13]);
+		}
+	}
+
+	m = _mm_aesenclast_si128(m, rk[keySize-1]);
 
 	_mm_storeu_si128((__m128i *) ct, m);
 }
 
-u8* aesNi128EncryptOneBlock(u8 *pt, u8 *rk) {
-	u8 computed_cipher[16];
-	__m128i key_schedule[20];
-	aesNi128LoadKey(rk, key_schedule);
-	aesNi128BlockEncryption(key_schedule, pt, computed_cipher);
-	return computed_cipher;
-}
-
-void aesNi128ExhaustiveSearch(u8 *pt, u8 *rk, u8 *ct, u32 range) {
-	u8 computed_cipher[16];
-	__m128i key_schedule[20];
+void aesNiExhaustiveSearch(u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen) {
+	u8 createdCiphertext[AES_128_KEY_LEN];
+	__m128i *roundKeys = new __m128i[keySize];
+	
 	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
-		//printHex(rk, 16);
 
-		aesNi128LoadKey(rk, key_schedule);
-		aesNi128BlockEncryption(key_schedule, pt, computed_cipher);
+		aesNiKeyExpansion(rk, roundKeys, keyLen);
+		aesNiBlockEncryption(roundKeys, pt, createdCiphertext, keySize);
 
-		if (memcmp(ct, computed_cipher, sizeof(ct)) == 0) {
+		if (memcmp(ct, createdCiphertext, sizeof(ct)) == 0) {
 			cout << "! Key is found: " << endl;
-			printHex(rk, 16);
+			printHex(rk, keyLen);
 		}
 
 		incrementByteArray(rk);
 	}
+
+	delete roundKeys;
 }
 
+void aesNiCtr(u8 *pt, u8 *rk, u32 range, int keySize, int keyLen) {
 
-void aesNi128Ctr(u8 *pt, u8 *rk, u32 range) {
-
-	u8 ct[16] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
-
-	uint8_t computed_cipher[16];
-	__m128i key_schedule[20];
-	aesNi128LoadKey(rk, key_schedule);
+	u8 createdCiphertext[AES_128_KEY_LEN];
+	__m128i *roundKeys = new __m128i[keySize];
+	aesNiKeyExpansion(rk, roundKeys, keyLen);
 	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
-		//cout << "Plaintext: " << endl;
-		//printHex(pt, 16);
 
-		aesNi128BlockEncryption(key_schedule, pt, computed_cipher);
-
-		//cout << "Ciphertext: " << endl;
-		//printHex(computed_cipher, 16);
-
-		//if (memcmp(ct, computed_cipher, sizeof(ct)) == 0) {
-		//	cout << "! Key is found: " << endl;
-		//}
+		aesNiBlockEncryption(roundKeys, pt, createdCiphertext, keySize);
 
 		incrementByteArray(pt);
+
+		if (rangeCount == 0) {
+			printf("Ciphertext    :"); printHex(createdCiphertext, AES_128_KEY_LEN);
+		}
 	}
 
-	cout << "Plaintext: " << endl;
-	printHex(pt, 16);
-
-	cout << "Ciphertext: " << endl;
-	printHex(computed_cipher, 16);
+	delete roundKeys;
 }
 
 void printHex(u8* key, int length) {
@@ -150,7 +203,10 @@ __m128i reverseBytesM128i(__m128i x) {
 void printM128i(__m128i var) {
 	uint8_t *val = (uint8_t*)&var;
 	for (int i = 0; i < 16; i++) {
-		printf("%02x ", val[i]);
+		printf("%02x", val[i]);
+		if (i % 4 == 3) {
+			printf(" ");
+		}
 	}
 	printf("\n");
 }
@@ -158,19 +214,86 @@ void printM128i(__m128i var) {
 void mainAesNi128ExhaustiveSearch() {
 	cout << endl << "########## AES-128 NI Exhaustive Search Implementation ##########" << endl << endl;
 
-	u8 pt[16] = { 0x32, 0x43, 0xF6, 0xA8, 0x88, 0x5A, 0x30, 0x8D, 0x31, 0x31, 0x98, 0xA2, 0xE0, 0x37, 0x07, 0x34 };
-	u8 ct[16] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
-	u8 rk[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x30 };
+	u8 pt[AES_128_KEY_LEN] = { 0x32, 0x43, 0xF6, 0xA8, 0x88, 0x5A, 0x30, 0x8D, 0x31, 0x31, 0x98, 0xA2, 0xE0, 0x37, 0x07, 0x34 };
+	u8 ct[AES_128_KEY_LEN] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
+	u8 rk[AES_128_KEY_LEN] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
 
 	u32 p = 25;
 	double keyRange = pow(2, p);
 	u32 range = ceil(keyRange);
-	cout << "POWER: " << p << " Range: " << range << endl;
-	cout << "------------------------------------" << endl;
+	printf("-------------------------------\n");
+	printf("Key Range (power)  : %d\n", p);
+	printf("Total encryptions  : %d\n", range);
+	printf("-------------------------------\n");
+	printf("Initial Key   :"); printHex(rk, AES_128_KEY_LEN);
+	printf("Plaintext     :"); printHex(pt, AES_128_KEY_LEN);
+	printf("Ciphertext    :"); printHex(ct, AES_128_KEY_LEN);
+	printf("-------------------------------\n");
 
 	clock_t beginTime = clock();
 
-	aesNi128ExhaustiveSearch(pt, rk, ct, range);
+	aesNiExhaustiveSearch(pt, rk, ct, range, AES_128_KEY_SIZE, AES_128_KEY_LEN);
+
+	cout << "------------------------------------" << endl;
+	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
+	cout << "------------------------------------" << endl;
+
+}
+
+void mainAesNi192ExhaustiveSearch() {
+	cout << endl << "########## AES-192 NI Exhaustive Search Implementation ##########" << endl << endl;
+
+	u8 pt[AES_128_KEY_LEN] = { 0x6B, 0xC1, 0xBE, 0xE2, 0x2E, 0x40, 0x9F, 0x96, 0xE9, 0x3D, 0x7E, 0x11, 0x73, 0x93, 0x17, 0x2A };
+	u8 ct[AES_128_KEY_LEN] = { 0xBD, 0x33, 0x4F, 0x1D, 0x6E, 0x45, 0xF2, 0x5F, 0xF7, 0x12, 0xA2, 0x14, 0x57, 0x1F, 0xA5, 0xCC };
+	u8 rk[AES_192_KEY_LEN] = { 0x8E, 0x73, 0xB0, 0xF7, 0xDA, 0x0E, 0x64, 0x52, 0xC8, 0x10, 0xF3, 0x2B, 0x80, 0x90, 0x79, 0xE5, 
+		0x62, 0xF8, 0xEA, 0xD2, 0x52, 0x2C, 0x6B, 0x7B };
+
+	u32 p = 25;
+	double keyRange = pow(2, p);
+	u32 range = ceil(keyRange);
+	printf("-------------------------------\n");
+	printf("Key Range (power)  : %d\n", p);
+	printf("Total encryptions  : %d\n", range);
+	printf("-------------------------------\n");
+	printf("Initial Key   :"); printHex(rk, AES_192_KEY_LEN);
+	printf("Plaintext     :"); printHex(pt, AES_128_KEY_LEN);
+	printf("Ciphertext    :"); printHex(ct, AES_128_KEY_LEN);
+	printf("-------------------------------\n");
+
+	clock_t beginTime = clock();
+
+	aesNiExhaustiveSearch(pt, rk, ct, range, AES_192_KEY_SIZE, AES_192_KEY_LEN);
+
+	cout << "------------------------------------" << endl;
+	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
+	cout << "------------------------------------" << endl;
+
+}
+
+void mainAesNi256ExhaustiveSearch() {
+	cout << endl << "########## AES-256 NI Exhaustive Search Implementation ##########" << endl << endl;
+
+	u8 pt[AES_128_KEY_LEN] = { 0x6B, 0xC1, 0xBE, 0xE2, 0x2E, 0x40, 0x9F, 0x96, 0xE9, 0x3D, 0x7E, 0x11, 0x73, 0x93, 0x17, 0x2A };
+	u8 ct[AES_128_KEY_LEN] = { 0xF3, 0xEE, 0xD1, 0xBD, 0xB5, 0xD2, 0xA0, 0x3C, 0x06, 0x4B, 0x5A, 0x7E, 0x3D, 0xB1, 0x81, 0xF8 };
+	u8 rk[AES_256_KEY_LEN] = { 0x60, 0x3D, 0xEB, 0x10, 0x15, 0xCA, 0x71, 0xBE, 0x2B, 0x73, 0xAE, 0xF0, 0x85, 0x7D, 0x77, 0x81, 
+		0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61, 0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4 };
+
+	u32 p = 25;
+	double keyRange = pow(2, p);
+	u32 range = ceil(keyRange);
+	printf("-------------------------------\n");
+	printf("Key Range (power)  : %d\n", p);
+	printf("Total encryptions  : %d\n", range);
+	printf("-------------------------------\n");
+	printf("Initial Key   :"); printHex(rk, AES_256_KEY_LEN);
+	printf("Plaintext     :"); printHex(pt, AES_128_KEY_LEN);
+	printf("Ciphertext    :"); printHex(ct, AES_128_KEY_LEN);
+	printf("-------------------------------\n");
+
+	clock_t beginTime = clock();
+
+	aesNiExhaustiveSearch(pt, rk, ct, range, AES_256_KEY_SIZE, AES_256_KEY_LEN);
+
 	cout << "------------------------------------" << endl;
 	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
 	cout << "------------------------------------" << endl;
@@ -180,19 +303,84 @@ void mainAesNi128ExhaustiveSearch() {
 void mainAesNi128Ctr() {
 	cout << endl << "########## AES-128 NI Counter Mode Implementation ##########" << endl << endl;
 
-	u8 pt[16] = { 0x32, 0x43, 0xF6, 0xA8, 0x88, 0x5A, 0x30, 0x8D, 0x31, 0x31, 0x98, 0xA2, 0xE0, 0x37, 0x07, 0x34 };
-	u8 ct[16] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
-	u8 rk[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+	u8 pt[AES_128_KEY_LEN] = { 0x32, 0x43, 0xF6, 0xA8, 0x88, 0x5A, 0x30, 0x8D, 0x31, 0x31, 0x98, 0xA2, 0xE0, 0x37, 0x07, 0x34 };
+	u8 ct[AES_128_KEY_LEN] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
+	u8 rk[AES_128_KEY_LEN] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
 
 	u32 p = 25;
 	double keyRange = pow(2, p);
 	u32 range = ceil(keyRange);
-	cout << "POWER: " << p << " Range: " << range << endl;
-	cout << "------------------------------------" << endl;
+	printf("-------------------------------\n");
+	printf("Key Range (power)  : %d\n", p);
+	printf("Total encryptions  : %d\n", range);
+	printf("-------------------------------\n");
+	printf("Initial Key   :"); printHex(rk, AES_128_KEY_LEN);
+	printf("Plaintext     :"); printHex(pt, AES_128_KEY_LEN);
+	printf("Ciphertext    :"); printHex(ct, AES_128_KEY_LEN);
+	printf("-------------------------------\n");
 
 	clock_t beginTime = clock();
 
-	aesNi128Ctr(pt, rk, range);
+	aesNiCtr(pt, rk, range, AES_128_KEY_SIZE, AES_128_KEY_LEN);
+
+	cout << "------------------------------------" << endl;
+	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
+	cout << "------------------------------------" << endl;
+}
+
+void mainAesNi192Ctr() {
+	cout << endl << "########## AES-192 NI Counter Mode Implementation ##########" << endl << endl;
+
+	u8 pt[AES_128_KEY_LEN] = { 0x6B, 0xC1, 0xBE, 0xE2, 0x2E, 0x40, 0x9F, 0x96, 0xE9, 0x3D, 0x7E, 0x11, 0x73, 0x93, 0x17, 0x2A };
+	u8 ct[AES_128_KEY_LEN] = { 0xBD, 0x33, 0x4F, 0x1D, 0x6E, 0x45, 0xF2, 0x5F, 0xF7, 0x12, 0xA2, 0x14, 0x57, 0x1F, 0xA5, 0xCC };
+	u8 rk[AES_192_KEY_LEN] = { 0x8E, 0x73, 0xB0, 0xF7, 0xDA, 0x0E, 0x64, 0x52, 0xC8, 0x10, 0xF3, 0x2B, 0x80, 0x90, 0x79, 0xE5,
+		0x62, 0xF8, 0xEA, 0xD2, 0x52, 0x2C, 0x6B, 0x7B };
+
+	u32 p = 25;
+	double keyRange = pow(2, p);
+	u32 range = ceil(keyRange);
+	printf("-------------------------------\n");
+	printf("Key Range (power)  : %d\n", p);
+	printf("Total encryptions  : %d\n", range);
+	printf("-------------------------------\n");
+	printf("Initial Key   :"); printHex(rk, AES_192_KEY_LEN);
+	printf("Plaintext     :"); printHex(pt, AES_128_KEY_LEN);
+	printf("Ciphertext    :"); printHex(ct, AES_128_KEY_LEN);
+	printf("-------------------------------\n");
+
+	clock_t beginTime = clock();
+
+	aesNiCtr(pt, rk, range, AES_192_KEY_SIZE, AES_192_KEY_LEN);
+
+	cout << "------------------------------------" << endl;
+	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
+	cout << "------------------------------------" << endl;
+}
+
+void mainAesNi256Ctr() {
+	cout << endl << "########## AES-256 NI Counter Mode Implementation ##########" << endl << endl;
+
+	u8 pt[AES_128_KEY_LEN] = { 0x6B, 0xC1, 0xBE, 0xE2, 0x2E, 0x40, 0x9F, 0x96, 0xE9, 0x3D, 0x7E, 0x11, 0x73, 0x93, 0x17, 0x2A };
+	u8 ct[AES_128_KEY_LEN] = { 0xF3, 0xEE, 0xD1, 0xBD, 0xB5, 0xD2, 0xA0, 0x3C, 0x06, 0x4B, 0x5A, 0x7E, 0x3D, 0xB1, 0x81, 0xF8 };
+	u8 rk[AES_256_KEY_LEN] = { 0x60, 0x3D, 0xEB, 0x10, 0x15, 0xCA, 0x71, 0xBE, 0x2B, 0x73, 0xAE, 0xF0, 0x85, 0x7D, 0x77, 0x81,
+		0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61, 0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4 };
+
+	u32 p = 25;
+	double keyRange = pow(2, p);
+	u32 range = ceil(keyRange);
+	printf("-------------------------------\n");
+	printf("Key Range (power)  : %d\n", p);
+	printf("Total encryptions  : %d\n", range);
+	printf("-------------------------------\n");
+	printf("Initial Key   :"); printHex(rk, AES_256_KEY_LEN);
+	printf("Plaintext     :"); printHex(pt, AES_128_KEY_LEN);
+	printf("Ciphertext    :"); printHex(ct, AES_128_KEY_LEN);
+	printf("-------------------------------\n");
+
+	clock_t beginTime = clock();
+
+	aesNiCtr(pt, rk, range, AES_256_KEY_SIZE, AES_256_KEY_LEN);
+
 	cout << "------------------------------------" << endl;
 	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
 	cout << "------------------------------------" << endl;
