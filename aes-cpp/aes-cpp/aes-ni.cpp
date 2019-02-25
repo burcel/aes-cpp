@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "aes-ni.h"
+#include <fstream>
 
 using namespace std;
 
@@ -154,6 +155,27 @@ void aesNiCtr(u8 *pt, u8 *rk, u32 range, int keySize, int keyLen) {
 
 		if (rangeCount == 0) {
 			printf("Ciphertext    :"); printHex(createdCiphertext, AES_128_KEY_LEN);
+		}
+	}
+
+	delete roundKeys;
+}
+
+void aesNiCtrMemAlocation(u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen) {
+
+	u32 ctIndex = 0;
+	u8 createdCiphertext[AES_128_KEY_LEN];
+	__m128i *roundKeys = new __m128i[keySize];
+	aesNiKeyExpansion(rk, roundKeys, keyLen);
+	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
+
+		aesNiBlockEncryption(roundKeys, pt, createdCiphertext, keySize);
+
+		incrementByteArray(pt);
+
+		// Allocate ciphertext
+		for (int createdCtIndex = 0; createdCtIndex < AES_128_KEY_LEN; createdCtIndex++, ctIndex++) {
+			ct[ctIndex] = createdCiphertext[createdCtIndex];
 		}
 	}
 
@@ -384,4 +406,98 @@ void mainAesNi256Ctr() {
 	cout << "------------------------------------" << endl;
 	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
 	cout << "------------------------------------" << endl;
+}
+
+void mainAesNiFileEncryption() {
+	cout << endl << "########## AES-128 NI File Encryption Implementation ##########" << endl << endl;
+
+	u8 pt[AES_128_KEY_LEN] = { 0x32, 0x43, 0xF6, 0xA8, 0x88, 0x5A, 0x30, 0x8D, 0x31, 0x31, 0x98, 0xA2, 0xE0, 0x37, 0x07, 0x34 };
+	u8 ct[AES_128_KEY_LEN] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
+	u8 rk128[AES_128_KEY_LEN] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
+	u8 rk192[AES_192_KEY_LEN] = { 0x8E, 0x73, 0xB0, 0xF7, 0xDA, 0x0E, 0x64, 0x52, 0xC8, 0x10, 0xF3, 0x2B, 0x80, 0x90, 0x79, 0xE5,
+	0x62, 0xF8, 0xEA, 0xD2, 0x52, 0x2C, 0x6B, 0x7B };
+	u8 rk256[AES_256_KEY_LEN] = { 0x60, 0x3D, 0xEB, 0x10, 0x15, 0xCA, 0x71, 0xBE, 0x2B, 0x73, 0xAE, 0xF0, 0x85, 0x7D, 0x77, 0x81,
+	0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61, 0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4 };
+
+	int chunkSize = 1024;
+	const string filePath = "C://file-encryption-test//william3.mp4_ENC";
+	fstream fileIn(filePath, fstream::in | fstream::binary);
+	if (fileIn) {
+		// Get file size
+		fileIn.seekg(0, fileIn.end);
+		int fileSize = fileIn.tellg();
+		fileIn.seekg(0, fileIn.beg);
+		printf("File: %s\n", filePath.c_str());
+		printf("Size in bytes: %d\n", fileSize);
+		printf("-------------------------------\n");
+
+		double totalBlockSize = (double)fileSize / AES_128_KEY_LEN;
+		u32 encryptionCount = ceil(totalBlockSize);
+		u32 ciphertextSize = encryptionCount * AES_128_KEY_LEN * sizeof(u8);
+		u8 *ct = new u8[ciphertextSize];
+
+		printf("Total encryptions             : %d\n", encryptionCount);
+		printf("Total encryptions in byte     : %d\n", ciphertextSize);
+		printf("-------------------------------\n");
+		printf("Initial Key      :"); printHex(rk128, AES_128_KEY_LEN);
+		//printf("Initial Key      :"); printHex(rk192, AES_192_KEY_LEN);
+		//printf("Initial Key      :"); printHex(rk256, AES_256_KEY_LEN);
+		printf("Initial Counter  :"); printHex(pt, AES_128_KEY_LEN);
+		printf("-------------------------------\n");
+
+		clock_t beginTime = clock();
+
+		aesNiCtrMemAlocation(pt, rk128, ct, encryptionCount, AES_128_KEY_SIZE, AES_128_KEY_LEN);
+
+		printf("-------------------------------\n");
+		printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
+		printf("-------------------------------\n");
+
+
+		beginTime = clock();
+		// Open output file
+		const std::string outFilePath = filePath + "_ENC";
+		printf("Encrypted File: %s\n", outFilePath.c_str());
+		printf("-------------------------------\n");
+		fstream fileOut(outFilePath, fstream::out | fstream::binary);
+		// Allocate file buffer
+		char * buffer = new char[chunkSize];
+		while (1) {
+			// Read data as a block into buffer:
+			fileIn.read(buffer, chunkSize);
+			// Decide whether buffer is at the last part
+			long readByte = 0;
+			if (fileIn) {
+				// All characters read successfully
+				readByte = chunkSize;
+			} else {
+				// Only readByte characters could be read
+				readByte = fileIn.gcount();
+			}
+			// Process current buffer
+			u32 readInt = 0;
+			u32 ctIndex = 0;
+			for (u32 bufferIndex = 0; bufferIndex < readByte; bufferIndex++, ctIndex++) {
+				buffer[bufferIndex] ^= ct[ctIndex];
+			}
+			// Write buffer to output file
+			fileOut.write(buffer, readByte);
+			// stop
+			if (readByte < chunkSize) {
+				break;
+			}
+		}
+
+		printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
+		printf("-------------------------------\n");
+
+		delete[] buffer;
+		fileOut.close();
+
+
+		delete ct;
+	} else {
+		printf("File could not be opened: %s\n", filePath.c_str());
+	}
+
 }
