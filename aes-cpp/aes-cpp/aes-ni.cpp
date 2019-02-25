@@ -420,7 +420,7 @@ void mainAesNiFileEncryption() {
 	0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61, 0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4 };
 
 	int chunkSize = 1024;
-	const string filePath = "C://file-encryption-test//william3.mp4_ENC";
+	const string filePath = "C://file-encryption-test//00";
 	fstream fileIn(filePath, fstream::in | fstream::binary);
 	if (fileIn) {
 		// Get file size
@@ -462,6 +462,7 @@ void mainAesNiFileEncryption() {
 		fstream fileOut(outFilePath, fstream::out | fstream::binary);
 		// Allocate file buffer
 		char * buffer = new char[chunkSize];
+		u32 ctIndex = 0;
 		while (1) {
 			// Read data as a block into buffer:
 			fileIn.read(buffer, chunkSize);
@@ -475,8 +476,6 @@ void mainAesNiFileEncryption() {
 				readByte = fileIn.gcount();
 			}
 			// Process current buffer
-			u32 readInt = 0;
-			u32 ctIndex = 0;
 			for (u32 bufferIndex = 0; bufferIndex < readByte; bufferIndex++, ctIndex++) {
 				buffer[bufferIndex] ^= ct[ctIndex];
 			}
