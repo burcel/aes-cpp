@@ -46,32 +46,28 @@ void aesNiKeyExpansion(u8 *cipherKey, __m128i *rk, int keyLen) {
 			__m128i temp[2];
 			rk[0] = _mm_loadu_si128((const __m128i*) cipherKey);
 			rk[1] = _mm_loadu_si128((const __m128i*) (cipherKey + 16));
-			rk[1] = _mm_and_si128(rk[1], _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF));
 			temp[0] = KEYEXP192(rk[0], rk[1], 0x01);
 			temp[1] = KEYEXP192_2(temp[0], rk[1]);
-			rk[1] = _mm_xor_si128(rk[1], _mm_slli_si128(temp[0], 8));
-			rk[2] = _mm_xor_si128(_mm_srli_si128(temp[0], 8), _mm_slli_si128(temp[1], 8));
+			rk[1] = _mm_castpd_si128(_mm_shuffle_pd(_mm_castsi128_pd(rk[1]), _mm_castsi128_pd(temp[0]), 0));
+			rk[2] = _mm_castpd_si128(_mm_shuffle_pd(_mm_castsi128_pd(temp[0]), _mm_castsi128_pd(temp[1]), 1));
 			rk[3] = KEYEXP192(temp[0], temp[1], 0x02);
 			rk[4] = KEYEXP192_2(rk[3], temp[1]);
 			temp[0] = KEYEXP192(rk[3], rk[4], 0x04);
 			temp[1] = KEYEXP192_2(temp[0], rk[4]);
-			rk[4] = _mm_and_si128(rk[4], _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF));
-			rk[4] = _mm_xor_si128(rk[4], _mm_slli_si128(temp[0], 8));
-			rk[5] = _mm_xor_si128(_mm_srli_si128(temp[0], 8), _mm_slli_si128(temp[1], 8));
+			rk[4] = _mm_castpd_si128(_mm_shuffle_pd(_mm_castsi128_pd(rk[4]), _mm_castsi128_pd(temp[0]), 0));
+			rk[5] = _mm_castpd_si128(_mm_shuffle_pd(_mm_castsi128_pd(temp[0]), _mm_castsi128_pd(temp[1]), 1));
 			rk[6] = KEYEXP192(temp[0], temp[1], 0x08);
 			rk[7] = KEYEXP192_2(rk[6], temp[1]);
 			temp[0] = KEYEXP192(rk[6], rk[7], 0x10);
 			temp[1] = KEYEXP192_2(temp[0], rk[7]);
-			rk[7] = _mm_and_si128(rk[7], _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF));
-			rk[7] = _mm_xor_si128(rk[7], _mm_slli_si128(temp[0], 8));
-			rk[8] = _mm_xor_si128(_mm_srli_si128(temp[0], 8), _mm_slli_si128(temp[1], 8));
+			rk[7] = _mm_castpd_si128(_mm_shuffle_pd(_mm_castsi128_pd(rk[7]), _mm_castsi128_pd(temp[0]), 0));
+			rk[8] = _mm_castpd_si128(_mm_shuffle_pd(_mm_castsi128_pd(temp[0]), _mm_castsi128_pd(temp[1]), 1));
 			rk[9] = KEYEXP192(temp[0], temp[1], 0x20);
 			rk[10] = KEYEXP192_2(rk[9], temp[1]);
 			temp[0] = KEYEXP192(rk[9], rk[10], 0x40);
 			temp[1] = KEYEXP192_2(temp[0], rk[10]);
-			rk[10] = _mm_and_si128(rk[10], _mm_set_epi32(0, 0, 0xFFFFFFFF, 0xFFFFFFFF));
-			rk[10] = _mm_xor_si128(rk[10], _mm_slli_si128(temp[0], 8));
-			rk[11] = _mm_xor_si128(_mm_srli_si128(temp[0], 8), _mm_slli_si128(temp[1], 8));
+			rk[10] = _mm_castpd_si128(_mm_shuffle_pd(_mm_castsi128_pd(rk[10]), _mm_castsi128_pd(temp[0]), 0));
+			rk[11] = _mm_castpd_si128(_mm_shuffle_pd(_mm_castsi128_pd(temp[0]), _mm_castsi128_pd(temp[1]), 1));
 			rk[12] = KEYEXP192(temp[0], temp[1], 0x80);
 			break;
 		}
@@ -185,7 +181,6 @@ void aesNiCtrMemAlocation(u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int ke
 
 void printHex(u8* key, int length) {
 	for (int i = 0; i < length; i++) {
-		unsigned int keyByteValue = key[i];
 		printf("%02x", key[i]);
 		if (i % 4 == 3) {
 			printf(" ");
