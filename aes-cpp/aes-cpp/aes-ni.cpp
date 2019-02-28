@@ -1,3 +1,4 @@
+#pragma once
 #include "stdafx.h"
 #include "aes-ni.h"
 #include <fstream>
@@ -421,6 +422,10 @@ void mainAesNiFileEncryption() {
 	printf("         ########## AES NI File Encryption Implementation ##########       \n");
 	printf("---------------------------------------------------------------------------\n\n");
 
+	int chunkSize = 1024;
+	const string filePath = "C://file-encryption-test//william2.mp4";
+	int keyLen = AES_256_KEY_LEN;
+
 	u8 pt[AES_128_KEY_LEN] = { 0x32, 0x43, 0xF6, 0xA8, 0x88, 0x5A, 0x30, 0x8D, 0x31, 0x31, 0x98, 0xA2, 0xE0, 0x37, 0x07, 0x34 };
 	u8 ct[AES_128_KEY_LEN] = { 0x39, 0x25, 0x84, 0x1D, 0x02, 0xDC, 0x09, 0xFB, 0xDC, 0x11, 0x85, 0x97, 0x19, 0x6A, 0x0B, 0x32 };
 	u8 rk128[AES_128_KEY_LEN] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
@@ -430,7 +435,6 @@ void mainAesNiFileEncryption() {
 	0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61, 0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4 };
 
 	// Determine key length
-	int keyLen = AES_256_KEY_LEN;
 	u8 *rk;
 	int keySize;
 	if (keyLen == AES_128_KEY_LEN) {
@@ -446,8 +450,7 @@ void mainAesNiFileEncryption() {
 		return;
 	}
 
-	int chunkSize = 1024;
-	const string filePath = "C://file-encryption-test//william2.mp4_ENC";
+
 	fstream fileIn(filePath, fstream::in | fstream::binary);
 	if (fileIn) {
 		// Get file size
@@ -516,10 +519,8 @@ void mainAesNiFileEncryption() {
 		printf("-------------------------------\n");
 
 		delete[] buffer;
+		delete[] ct;
 		fileOut.close();
-
-
-		delete ct;
 	} else {
 		printf("File could not be opened: %s\n", filePath.c_str());
 	}

@@ -1,3 +1,5 @@
+#ifndef AES_NI_H
+#define AES_NI_H
 #pragma once
 #include "stdafx.h"
 #include <iostream>
@@ -19,9 +21,6 @@ typedef uint64_t u64;
 #define AES_128_KEY_SIZE 11
 #define AES_192_KEY_SIZE 13
 #define AES_256_KEY_SIZE 15
-
-#define U32_SIZE 4
-
 
 void aesNiBlockEncryption(__m128i *rk, u8 *pt, u8 *ct, int keySize);
 void aesNiExhaustiveSearch(u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen);
@@ -55,3 +54,5 @@ __m128i reverseBytesM128i(__m128i x);
 __m128i aes128KeyExpand(__m128i key);
 __m128i aes192KeyExpand2(__m128i key, __m128i key2);
 void aesNiKeyExpansion(u8 *cipherKey, __m128i *rk, int keyLen);
+
+#endif
