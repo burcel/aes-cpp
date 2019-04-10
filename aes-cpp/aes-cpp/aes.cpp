@@ -1012,8 +1012,8 @@ void mainAesFileEncryption() {
 
 	// Options
 	int chunkSize = 1024;
-	const string filePath = "C://file-encryption-test//william3.mp4_ENC";
-	int keyLen = AES_256_KEY_LEN_INT;
+	const string filePath = "C://file-encryption-test//william3.mp4";
+	int keyLen = AES_128_KEY_LEN_INT;
 
 	u32 pt[AES_128_KEY_LEN_INT], rk128[AES_128_KEY_LEN_INT], rk192[AES_192_KEY_LEN_INT], rk256[AES_256_KEY_LEN_INT];
 

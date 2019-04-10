@@ -18,9 +18,6 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Aes128.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="aes-ni.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -36,9 +33,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="aes-cpp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Aes128.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="aes-ni.cpp">

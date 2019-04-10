@@ -23,7 +23,7 @@ typedef uint64_t u64;
 #define AES_256_KEY_SIZE 15
 
 void aesNiBlockEncryption(__m128i *rk, u8 *pt, u8 *ct, int keySize);
-void aesNiExhaustiveSearch(u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen);
+void aesNiExhaustiveSearch(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen);
 void aesNiCtr(u8 *pt, u8 *rk, u32 range, int keySize, int keyLen);
 void aesNiCtrMemAlocation(u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen);
 
@@ -46,7 +46,7 @@ void mainAesNiFileEncryption();
 // Utils
 void printM128i(__m128i var);
 void printHex(u8* key, int length);
-void incrementByteArray(u8 *rk);
+void incrementByteArray(u8 *rk, int keyLen);
 void incrementM128i(__m128i var);
 __m128i reverseBytesM128i(__m128i x);
 
