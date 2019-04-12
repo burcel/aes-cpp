@@ -24,7 +24,7 @@ typedef uint64_t u64;
 
 void aesNiBlockEncryption(__m128i *rk, u8 *pt, u8 *ct, int keySize);
 void aesNiExhaustiveSearch(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen);
-void aesNiCtr(u8 *pt, u8 *rk, u32 range, int keySize, int keyLen);
+void aesNiCtr(u8 threadIndex, u8 *pt, u8 *rk, u32 range, int keySize, int keyLen);
 void aesNiCtrMemAlocation(u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen);
 
 // 128
