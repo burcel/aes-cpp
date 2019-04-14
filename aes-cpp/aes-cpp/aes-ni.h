@@ -25,22 +25,22 @@ typedef uint64_t u64;
 void aesNiBlockEncryption(__m128i *rk, u8 *pt, u8 *ct, int keySize);
 void aesNiExhaustiveSearch(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen);
 void aesNiCtr(u8 threadIndex, u8 *pt, u8 *rk, u32 range, int keySize, int keyLen);
-void aesNiCtrMemAlocation(u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen);
+void aesNiCtrMemAlocation(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen, u32 threadCount);
 
 // 128
-void mainAesNi128ExhaustiveSearch();
-void mainAesNi128Ctr();
+void mainAesNi128ExhaustiveSearch(u32 power, u32 threadCount);
+void mainAesNi128Ctr(u32 power, u32 threadCount);
 
 // 192
-void mainAesNi192ExhaustiveSearch();
-void mainAesNi192Ctr();
+void mainAesNi192ExhaustiveSearch(u32 power, u32 threadCount);
+void mainAesNi192Ctr(u32 power, u32 threadCount);
 
 // 256
-void mainAesNi256ExhaustiveSearch();
-void mainAesNi256Ctr();
+void mainAesNi256ExhaustiveSearch(u32 power, u32 threadCount);
+void mainAesNi256Ctr(u32 power, u32 threadCount);
 
 // File Encryption
-void mainAesNiFileEncryption();
+void mainAesNiFileEncryption(std::string filePath, u32 keyLen, u32 threadCount);
 
 
 // Utils
