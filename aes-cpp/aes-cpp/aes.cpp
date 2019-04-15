@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "aes.h"
 #include <fstream>
+#include <thread>
 
 using namespace std;
 
@@ -169,7 +170,7 @@ void aesKeyExpansion(u32 *cipherKey, u32 *rk, int keyLen) {
 	}
 }
 
-void aes128ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
+void aes128ExhaustiveSearch(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 
 	u32 rk0Init, rk1Init, rk2Init, rk3Init;
 	rk0Init = rk[0];
@@ -182,6 +183,10 @@ void aes128ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	pt1Init = pt[1];
 	pt2Init = pt[2];
 	pt3Init = pt[3];
+
+	u64 threadRangeStart = (u64)threadIndex * range;
+	rk2Init = rk2Init + threadRangeStart / MAX_U32;
+	rk3Init = rk3Init + threadRangeStart % MAX_U32;
 
 	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
 
@@ -253,7 +258,6 @@ void aes128ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 					s3 = (T4[t3 >> 24] & 0xFF000000) ^ (T4[(t0 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t1 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t2) & 0xFF] & 0x000000FF) ^ rk3;
 					if (s3 == ct[3]) {
 						printf("! Found key : %08x %08x %08x %08x\n", rk0Init, rk1Init, rk2Init, rk3Init);
-						printf("-------------------------------\n");
 					}
 				}
 			}
@@ -269,7 +273,7 @@ void aes128ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	}
 }
 
-void aes192ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
+void aes192ExhaustiveSearch(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 
 	u32 rk0Init, rk1Init, rk2Init, rk3Init, rk4Init, rk5Init;
 	rk0Init = rk[0];
@@ -284,6 +288,10 @@ void aes192ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	pt1Init = pt[1];
 	pt2Init = pt[2];
 	pt3Init = pt[3];
+
+	u64 threadRangeStart = (u64)threadIndex * range;
+	rk4Init = rk4Init + threadRangeStart / MAX_U32;
+	rk5Init = rk5Init + threadRangeStart % MAX_U32;
 
 	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
 
@@ -392,7 +400,6 @@ void aes192ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 					s3 = (T4[t3 >> 24] & 0xFF000000) ^ (T4[(t0 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t1 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t2) & 0xFF] & 0x000000FF) ^ rk3;
 					if (s3 == ct[3]) {
 						printf("! Found key : %08x %08x %08x %08x %08x %08x\n", rk0Init, rk1Init, rk2Init, rk3Init, rk4Init, rk5Init);
-						printf("-------------------------------\n");
 					}
 				}
 			}
@@ -408,7 +415,7 @@ void aes192ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	}
 }
 
-void aes256ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
+void aes256ExhaustiveSearch(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 
 	u32 rk0Init, rk1Init, rk2Init, rk3Init, rk4Init, rk5Init, rk6Init, rk7Init;
 	rk0Init = rk[0];
@@ -425,6 +432,10 @@ void aes256ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	pt1Init = pt[1];
 	pt2Init = pt[2];
 	pt3Init = pt[3];
+
+	u64 threadRangeStart = (u64)threadIndex * range;
+	rk6Init = rk6Init + threadRangeStart / MAX_U32;
+	rk7Init = rk7Init + threadRangeStart % MAX_U32;
 
 	for (u32 rangeCount = 0; rangeCount < range; rangeCount++) {
 
@@ -522,7 +533,6 @@ void aes256ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 					s3 = (T4[t3 >> 24] & 0xFF000000) ^ (T4[(t0 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t1 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t2) & 0xFF] & 0x000000FF) ^ rk3;
 					if (s3 == ct[3]) {
 						printf("! Found key : %08x %08x %08x %08x %08x %08x %08x %08x\n", rk0Init, rk1Init, rk2Init, rk3Init, rk4Init, rk5Init, rk6Init, rk7Init);
-						printf("-------------------------------\n");
 					}
 				}
 			}
@@ -538,7 +548,7 @@ void aes256ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	}
 }
 
-void aes128Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
+void aes128Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 
 	u32 ctIndex = 0;
 	u32 pt0Init, pt1Init, pt2Init, pt3Init;
@@ -547,6 +557,10 @@ void aes128Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	pt1Init = pt[1];
 	pt2Init = pt[2];
 	pt3Init = pt[3];
+
+	u64 threadRangeStart = (u64)threadIndex * range;
+	pt2Init = pt2Init + threadRangeStart / MAX_U32;
+	pt3Init = pt3Init + threadRangeStart % MAX_U32;
 
 	for (u32 rangeCount = 0; rangeCount < range; rangeCount++) {
 
@@ -593,12 +607,12 @@ void aes128Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 
 		pt3Init++;
 
-		if (rangeCount == 0) {
+		if (threadIndex == 0 && rangeCount == 0) {
 			printf("First Ciphertext : %08x %08x %08x %08x\n", s0, s1, s2, s3);
 		}
 
 		// Allocate ciphertext
-		if (ct != NULL) {
+		if (ct != nullptr) {
 			ct[ctIndex++] = s0;
 			ct[ctIndex++] = s1;
 			ct[ctIndex++] = s2;
@@ -607,7 +621,7 @@ void aes128Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	}
 }
 
-void aes192Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
+void aes192Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 
 	u32 ctIndex = 0;
 	u32 pt0Init, pt1Init, pt2Init, pt3Init;
@@ -616,6 +630,10 @@ void aes192Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	pt1Init = pt[1];
 	pt2Init = pt[2];
 	pt3Init = pt[3];
+
+	u64 threadRangeStart = (u64)threadIndex * range;
+	pt2Init = pt2Init + threadRangeStart / MAX_U32;
+	pt3Init = pt3Init + threadRangeStart % MAX_U32;
 
 	for (u32 rangeCount = 0; rangeCount < range; rangeCount++) {
 
@@ -663,12 +681,12 @@ void aes192Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 		// Create key as 32 bit unsigned integers
 		pt3Init++;
 
-		if (rangeCount == 0) {
+		if (threadIndex == 0 && rangeCount == 0) {
 			printf("First Ciphertext : %08x %08x %08x %08x\n", s0, s1, s2, s3);
 		}
 
 		// Allocate ciphertext
-		if (ct != NULL) {
+		if (ct != nullptr) {
 			ct[ctIndex++] = s0;
 			ct[ctIndex++] = s1;
 			ct[ctIndex++] = s2;
@@ -677,7 +695,7 @@ void aes192Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	}
 }
 
-void aes256Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
+void aes256Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 
 	u32 ctIndex = 0;
 	u32 pt0Init, pt1Init, pt2Init, pt3Init;
@@ -686,6 +704,10 @@ void aes256Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	pt1Init = pt[1];
 	pt2Init = pt[2];
 	pt3Init = pt[3];
+
+	u64 threadRangeStart = (u64)threadIndex * range;
+	pt2Init = pt2Init + threadRangeStart / MAX_U32;
+	pt3Init = pt3Init + threadRangeStart % MAX_U32;
 
 	for (u32 rangeCount = 0; rangeCount < range; rangeCount++) {
 
@@ -733,12 +755,12 @@ void aes256Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 		// Create key as 32 bit unsigned integers
 		pt3Init++;
 
-		if (rangeCount == 0) {
+		if (threadIndex == 0 && rangeCount == 0) {
 			printf("First Ciphertext : %08x %08x %08x %08x\n", s0, s1, s2, s3);
 		}
 
 		// Allocate ciphertext
-		if (ct != NULL) {
+		if (ct != nullptr) {
 			ct[ctIndex++] = s0;
 			ct[ctIndex++] = s1;
 			ct[ctIndex++] = s2;
@@ -747,11 +769,12 @@ void aes256Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	}
 }
 
-void mainAes128ExhaustiveSearch() {
-	printf("---------------------------------------------------------------------------\n");
-	printf("      ########## AES - 128 Exhaustive Search Implementation ##########     \n");
-	printf("---------------------------------------------------------------------------\n\n");
+void mainAes128ExhaustiveSearch(u32 power, u32 threadCount) {
+	printf("--------------------------------------------------------------------------------\n");
+	printf("         ########## AES - 128 Exhaustive Search Implementation ##########       \n");
+	printf("--------------------------------------------------------------------------------\n\n");
 
+	// Inputs
 	u32 pt[AES_128_KEY_LEN_INT], ct[AES_128_KEY_LEN_INT], rk[AES_128_KEY_LEN_INT];
 	pt[0] = 0x3243F6A8U;
 	pt[1] = 0x885A308DU;
@@ -768,32 +791,49 @@ void mainAes128ExhaustiveSearch() {
 	rk[2] = 0xABF71588U;
 	rk[3] = 0x09CF4F3CU;
 
-	u32 p = 25;
-	double keyRange = pow(2, p);
-	u32 range = ceil(keyRange);
-	printf("-------------------------------\n");
-	printf("Key Range (power)  : %d\n", p);
-	printf("Total encryptions  : %d\n", range);
-	printf("-------------------------------\n");
+	// Calculate range for each thread
+	double keyRange = pow(2, power);
+	double threadRange = keyRange / threadCount;
+	u32 range = ceil(threadRange);
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Thread count            : %d\n", threadCount);
+	printf("Key range (power)       : %d\n", power);
+	printf("Key Range (decimal)     : %.0f\n", keyRange);
+	printf("Each Thread Key Range   : %d\n", range);
+	printf("Total encryptions       : %d\n", range * threadCount);
+	printf("--------------------------------------------------------------------------------\n");
 	printf("Plaintext     : %08x %08x %08x %08x\n", pt[0], pt[1], pt[2], pt[3]);
 	printf("Ciphertext    : %08x %08x %08x %08x\n", ct[0], ct[1], ct[2], ct[3]);
 	printf("Initial Key   : %08x %08x %08x %08x\n", rk[0], rk[1], rk[2], rk[3]);
-	printf("-------------------------------\n");
+	printf("--------------------------------------------------------------------------------\n");
 
+	// Starting threads
 	clock_t beginTime = clock();
+	thread *threadArray = new thread[threadCount];
+	for (u8 threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex] = thread(aes128ExhaustiveSearch, threadIndex, pt, rk, ct, range);
+	}
 
-	aes128ExhaustiveSearch(pt, rk, ct, range);
+	// Waiting threads
+	for (int threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex].join();
+	}
 
-	printf("-------------------------------\n");
-	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
-	printf("-------------------------------\n");
+	// Calculate time spent
+	float timeSpent = float(clock() - beginTime) / CLOCKS_PER_SEC;
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Time elapsed: %f sec\n", timeSpent);
+	printf("--------------------------------------------------------------------------------\n");
+
+	delete[] threadArray;
 }
 
-void mainAes192ExhaustiveSearch() {
-	printf("---------------------------------------------------------------------------\n");
-	printf("      ########## AES - 192 Exhaustive Search Implementation ##########     \n");
-	printf("---------------------------------------------------------------------------\n\n");
+void mainAes192ExhaustiveSearch(u32 power, u32 threadCount) {
+	printf("--------------------------------------------------------------------------------\n");
+	printf("         ########## AES - 192 Exhaustive Search Implementation ##########       \n");
+	printf("--------------------------------------------------------------------------------\n\n");
 
+	// Inputs
 	u32 pt[AES_128_KEY_LEN_INT], ct[AES_128_KEY_LEN_INT], rk[AES_192_KEY_LEN_INT];
 	pt[0] = 0x6BC1BEE2U;
 	pt[1] = 0x2E409F96U;
@@ -812,32 +852,49 @@ void mainAes192ExhaustiveSearch() {
 	rk[4] = 0x62f8ead2U;
 	rk[5] = 0x522c6b7bU;
 
-	u32 p = 25;
-	double keyRange = pow(2, p);
-	u32 range = ceil(keyRange);
-	printf("-------------------------------\n");
-	printf("Key Range (power)  : %d\n", p);
-	printf("Total encryptions  : %d\n", range);
-	printf("-------------------------------\n");
+	// Calculate range for each thread
+	double keyRange = pow(2, power);
+	double threadRange = keyRange / threadCount;
+	u32 range = ceil(threadRange);
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Thread count            : %d\n", threadCount);
+	printf("Key range (power)       : %d\n", power);
+	printf("Key Range (decimal)     : %.0f\n", keyRange);
+	printf("Each Thread Key Range   : %d\n", range);
+	printf("Total encryptions       : %d\n", range * threadCount);
+	printf("--------------------------------------------------------------------------------\n");
 	printf("Plaintext     : %08x %08x %08x %08x\n", pt[0], pt[1], pt[2], pt[3]);
 	printf("Ciphertext    : %08x %08x %08x %08x\n", ct[0], ct[1], ct[2], ct[3]);
 	printf("Initial Key   : %08x %08x %08x %08x %08x %08x\n", rk[0], rk[1], rk[2], rk[3], rk[4], rk[5]);
-	printf("-------------------------------\n");
+	printf("--------------------------------------------------------------------------------\n");
 
+	// Starting threads
 	clock_t beginTime = clock();
+	thread *threadArray = new thread[threadCount];
+	for (u8 threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex] = thread(aes192ExhaustiveSearch, threadIndex, pt, rk, ct, range);
+	}
 
-	aes192ExhaustiveSearch(pt, rk, ct, range);
+	// Waiting threads
+	for (int threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex].join();
+	}
 
-	printf("-------------------------------\n");
-	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
-	printf("-------------------------------\n");
+	// Calculate time spent
+	float timeSpent = float(clock() - beginTime) / CLOCKS_PER_SEC;
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Time elapsed: %f sec\n", timeSpent);
+	printf("--------------------------------------------------------------------------------\n");
+
+	delete[] threadArray;
 }
 
-void mainAes256ExhaustiveSearch() {
-	printf("---------------------------------------------------------------------------\n");
-	printf("      ########## AES - 256 Exhaustive Search Implementation ##########     \n");
-	printf("---------------------------------------------------------------------------\n\n");
+void mainAes256ExhaustiveSearch(u32 power, u32 threadCount) {
+	printf("--------------------------------------------------------------------------------\n");
+	printf("         ########## AES - 256 Exhaustive Search Implementation ##########       \n");
+	printf("--------------------------------------------------------------------------------\n\n");
 
+	// Inputs
 	u32 pt[AES_128_KEY_LEN_INT], ct[AES_128_KEY_LEN_INT], rk[AES_256_KEY_LEN_INT];
 	pt[0] = 0x6BC1BEE2U;
 	pt[1] = 0x2E409F96U;
@@ -858,33 +915,50 @@ void mainAes256ExhaustiveSearch() {
 	rk[6] = 0x2d9810a3U;
 	rk[7] = 0x0914dff4U;
 
-	u32 p = 25;
-	double keyRange = pow(2, p);
-	u32 range = ceil(keyRange);
-	printf("-------------------------------\n");
-	printf("Key Range (power)  : %d\n", p);
-	printf("Total encryptions  : %d\n", range);
-	printf("-------------------------------\n");
+	// Calculate range for each thread
+	double keyRange = pow(2, power);
+	double threadRange = keyRange / threadCount;
+	u32 range = ceil(threadRange);
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Thread count            : %d\n", threadCount);
+	printf("Key range (power)       : %d\n", power);
+	printf("Key Range (decimal)     : %.0f\n", keyRange);
+	printf("Each Thread Key Range   : %d\n", range);
+	printf("Total encryptions       : %d\n", range * threadCount);
+	printf("--------------------------------------------------------------------------------\n");
 	printf("Plaintext     : %08x %08x %08x %08x\n", pt[0], pt[1], pt[2], pt[3]);
 	printf("Ciphertext    : %08x %08x %08x %08x\n", ct[0], ct[1], ct[2], ct[3]);
-	printf("Initial Key   : %08x %08x %08x %08x %08x %08x\n", rk[0], rk[1], rk[2], rk[3], rk[4], rk[5], rk[6], rk[7]);
-	printf("-------------------------------\n");
+	printf("Initial Key   : %08x %08x %08x %08x %08x %08x %08x %08x\n", rk[0], rk[1], rk[2], rk[3], rk[4], rk[5], rk[6], rk[7]);
+	printf("--------------------------------------------------------------------------------\n");
 
+	// Starting threads
 	clock_t beginTime = clock();
+	thread *threadArray = new thread[threadCount];
+	for (u8 threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex] = thread(aes256ExhaustiveSearch, threadIndex, pt, rk, ct, range);
+	}
 
-	aes256ExhaustiveSearch(pt, rk, ct, range);
+	// Waiting threads
+	for (int threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex].join();
+	}
 
-	printf("-------------------------------\n");
-	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
-	printf("-------------------------------\n");
+	// Calculate time spent
+	float timeSpent = float(clock() - beginTime) / CLOCKS_PER_SEC;
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Time elapsed: %f sec\n", timeSpent);
+	printf("--------------------------------------------------------------------------------\n");
+
+	delete[] threadArray;
 }
 
-void mainAes128Ctr() {
-	printf("---------------------------------------------------------------------------\n");
-	printf("         ########## AES - 128 Counter Mode Implementation ##########       \n");
-	printf("---------------------------------------------------------------------------\n\n");
+void mainAes128Ctr(u32 power, u32 threadCount) {
+	printf("--------------------------------------------------------------------------------\n");
+	printf("            ########## AES - 128 Counter Mode Implementation ##########         \n");
+	printf("--------------------------------------------------------------------------------\n\n");
 
-	u32 pt[AES_128_KEY_LEN_INT], ct[AES_128_KEY_LEN_INT], rk[AES_128_KEY_LEN_INT];
+	// Inputs
+	u32 pt[AES_128_KEY_LEN_INT], rk[AES_128_KEY_LEN_INT];
 	pt[0] = 0x3243F6A8U;
 	pt[1] = 0x885A308DU;
 	pt[2] = 0x313198A2U;
@@ -895,35 +969,53 @@ void mainAes128Ctr() {
 	rk[2] = 0xABF71588U;
 	rk[3] = 0x09CF4F3CU;
 
-	u32 p = 25;
-	double keyRange = pow(2, p);
-	u32 range = ceil(keyRange);
-	printf("-------------------------------\n");
-	printf("Key Range (power)  : %d\n", p);
-	printf("Total encryptions  : %d\n", range);
-	printf("-------------------------------\n");
+	// Calculate range for each thread
+	double keyRange = pow(2, power);
+	double threadRange = keyRange / threadCount;
+	u32 range = ceil(threadRange);
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Thread count            : %d\n", threadCount);
+	printf("Key range (power)       : %d\n", power);
+	printf("Key Range (decimal)     : %.0f\n", keyRange);
+	printf("Each Thread Key Range   : %d\n", range);
+	printf("Total encryptions       : %d\n", range * threadCount);
+	printf("--------------------------------------------------------------------------------\n");
 	printf("Plaintext     : %08x %08x %08x %08x\n", pt[0], pt[1], pt[2], pt[3]);
 	printf("Initial Key   : %08x %08x %08x %08x\n", rk[0], rk[1], rk[2], rk[3]);
-	printf("-------------------------------\n");
+	printf("--------------------------------------------------------------------------------\n");
 
 	// Prepare round keys
 	u32 *roundKeys = new u32[AES_128_KEY_SIZE_INT];
 	aesKeyExpansion(rk, roundKeys, AES_128_KEY_LEN_INT);
 
+	// Starting threads
 	clock_t beginTime = clock();
-	
-	aes128Ctr(pt, roundKeys, NULL, range);
+	thread *threadArray = new thread[threadCount];
+	for (u8 threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex] = thread(aes128Ctr, threadIndex, pt, roundKeys, nullptr, range);
+	}
 
-	printf("-------------------------------\n");
-	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
-	printf("-------------------------------\n");
+	// Waiting threads
+	for (int threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex].join();
+	}
+
+	// Calculate time spent
+	float timeSpent = float(clock() - beginTime) / CLOCKS_PER_SEC;
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Time elapsed: %f sec\n", timeSpent);
+	printf("--------------------------------------------------------------------------------\n");
+
+	delete[] threadArray;
+	delete[] roundKeys;
 }
 
-void mainAes192Ctr() {
-	printf("---------------------------------------------------------------------------\n");
-	printf("         ########## AES - 192 Counter Mode Implementation ##########       \n");
-	printf("---------------------------------------------------------------------------\n\n");
+void mainAes192Ctr(u32 power, u32 threadCount) {
+	printf("--------------------------------------------------------------------------------\n");
+	printf("            ########## AES - 192 Counter Mode Implementation ##########         \n");
+	printf("--------------------------------------------------------------------------------\n\n");
 
+	// Inputs
 	u32 pt[AES_128_KEY_LEN_INT], rk[AES_192_KEY_LEN_INT];
 	pt[0] = 0x6BC1BEE2U;
 	pt[1] = 0x2E409F96U;
@@ -937,35 +1029,52 @@ void mainAes192Ctr() {
 	rk[4] = 0x62f8ead2U;
 	rk[5] = 0x522c6b7bU;
 
-	u32 p = 25;
-	double keyRange = pow(2, p);
-	u32 range = ceil(keyRange);
-	printf("-------------------------------\n");
-	printf("Key Range (power)  : %d\n", p);
-	printf("Total encryptions  : %d\n", range);
-	printf("-------------------------------\n");
+	// Calculate range for each thread
+	double keyRange = pow(2, power);
+	double threadRange = keyRange / threadCount;
+	u32 range = ceil(threadRange);
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Thread count            : %d\n", threadCount);
+	printf("Key range (power)       : %d\n", power);
+	printf("Key Range (decimal)     : %.0f\n", keyRange);
+	printf("Each Thread Key Range   : %d\n", range);
+	printf("Total encryptions       : %d\n", range * threadCount);
+	printf("--------------------------------------------------------------------------------\n");
 	printf("Plaintext     : %08x %08x %08x %08x\n", pt[0], pt[1], pt[2], pt[3]);
 	printf("Initial Key   : %08x %08x %08x %08x %08x %08x\n", rk[0], rk[1], rk[2], rk[3], rk[4], rk[5]);
-	printf("-------------------------------\n");
+	printf("--------------------------------------------------------------------------------\n");
 
 	// Prepare round keys
 	u32 *roundKeys = new u32[AES_192_KEY_SIZE_INT];
 	aesKeyExpansion(rk, roundKeys, AES_192_KEY_LEN_INT);
 
+	// Starting threads
 	clock_t beginTime = clock();
+	thread *threadArray = new thread[threadCount];
+	for (u8 threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex] = thread(aes192Ctr, threadIndex, pt, roundKeys, nullptr, range);
+	}
 
-	aes192Ctr(pt, roundKeys, NULL, range);
+	// Waiting threads
+	for (int threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex].join();
+	}
 
-	printf("-------------------------------\n");
-	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
-	printf("-------------------------------\n");
+	// Calculate time spent
+	float timeSpent = float(clock() - beginTime) / CLOCKS_PER_SEC;
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Time elapsed: %f sec\n", timeSpent);
+	printf("--------------------------------------------------------------------------------\n");
+
+	delete[] threadArray;
 }
 
-void mainAes256Ctr() {
-	printf("---------------------------------------------------------------------------\n");
-	printf("         ########## AES - 256 Counter Mode Implementation ##########       \n");
-	printf("---------------------------------------------------------------------------\n\n");
+void mainAes256Ctr(u32 power, u32 threadCount) {
+	printf("--------------------------------------------------------------------------------\n");
+	printf("            ########## AES - 256 Counter Mode Implementation ##########         \n");
+	printf("--------------------------------------------------------------------------------\n\n");
 
+	// Inputs
 	u32 pt[AES_128_KEY_LEN_INT], rk[AES_256_KEY_LEN_INT];
 	pt[0] = 0x6BC1BEE2U;
 	pt[1] = 0x2E409F96U;
@@ -981,28 +1090,44 @@ void mainAes256Ctr() {
 	rk[6] = 0x2d9810a3U;
 	rk[7] = 0x0914dff4U;
 
-	u32 p = 25;
-	double keyRange = pow(2, p);
-	u32 range = ceil(keyRange);
-	printf("-------------------------------\n");
-	printf("Key Range (power)  : %d\n", p);
-	printf("Total encryptions  : %d\n", range);
-	printf("-------------------------------\n");
+	// Calculate range for each thread
+	double keyRange = pow(2, power);
+	double threadRange = keyRange / threadCount;
+	u32 range = ceil(threadRange);
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Thread count            : %d\n", threadCount);
+	printf("Key range (power)       : %d\n", power);
+	printf("Key Range (decimal)     : %.0f\n", keyRange);
+	printf("Each Thread Key Range   : %d\n", range);
+	printf("Total encryptions       : %d\n", range * threadCount);
+	printf("--------------------------------------------------------------------------------\n");
 	printf("Plaintext     : %08x %08x %08x %08x\n", pt[0], pt[1], pt[2], pt[3]);
-	printf("Initial Key   : %08x %08x %08x %08x %08x %08x\n", rk[0], rk[1], rk[2], rk[3], rk[4], rk[5], rk[6], rk[7]);
-	printf("-------------------------------\n");
+	printf("Initial Key   : %08x %08x %08x %08x %08x %08x %08x %08x\n", rk[0], rk[1], rk[2], rk[3], rk[4], rk[5], rk[6], rk[7]);
+	printf("--------------------------------------------------------------------------------\n");
 
 	// Prepare round keys
 	u32 *roundKeys = new u32[AES_256_KEY_SIZE_INT];
 	aesKeyExpansion(rk, roundKeys, AES_256_KEY_LEN_INT);
 
+	// Starting threads
 	clock_t beginTime = clock();
+	thread *threadArray = new thread[threadCount];
+	for (u8 threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex] = thread(aes256Ctr, threadIndex, pt, roundKeys, nullptr, range);
+	}
 
-	aes256Ctr(pt, roundKeys, NULL, range);
+	// Waiting threads
+	for (int threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex].join();
+	}
 
-	printf("-------------------------------\n");
-	printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
-	printf("-------------------------------\n");
+	// Calculate time spent
+	float timeSpent = float(clock() - beginTime) / CLOCKS_PER_SEC;
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Time elapsed: %f sec\n", timeSpent);
+	printf("--------------------------------------------------------------------------------\n");
+
+	delete[] threadArray;
 }
 
 void mainAesFileEncryption() {
@@ -1090,11 +1215,11 @@ void mainAesFileEncryption() {
 		clock_t beginTime = clock();
 
 		if (keyLen == AES_128_KEY_LEN_INT) {
-			aes128Ctr(pt, roundKeys, ct, encryptionCount);
+			aes128Ctr(0, pt, roundKeys, ct, encryptionCount);
 		} else if (keyLen == AES_192_KEY_LEN_INT) {
-			aes192Ctr(pt, roundKeys, ct, encryptionCount);
+			aes192Ctr(0, pt, roundKeys, ct, encryptionCount);
 		} else if (keyLen == AES_256_KEY_LEN_INT) {
-			aes256Ctr(pt, roundKeys, ct, encryptionCount);
+			aes256Ctr(0, pt, roundKeys, ct, encryptionCount);
 		}
 
 		printf("-------------------------------\n");

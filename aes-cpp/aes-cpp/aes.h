@@ -35,16 +35,16 @@ typedef uint64_t u64;
 #define SHIFT_3_RIGHT			24
 
 // 128
-void mainAes128ExhaustiveSearch();
-void mainAes128Ctr();
+void mainAes128ExhaustiveSearch(u32 power, u32 threadCount);
+void mainAes128Ctr(u32 power, u32 threadCount);
 
 // 192
-void mainAes192ExhaustiveSearch();
-void mainAes192Ctr();
+void mainAes192ExhaustiveSearch(u32 power, u32 threadCount);
+void mainAes192Ctr(u32 power, u32 threadCount);
 
 // 256
-void mainAes256ExhaustiveSearch();
-void mainAes256Ctr();
+void mainAes256ExhaustiveSearch(u32 power, u32 threadCount);
+void mainAes256Ctr(u32 power, u32 threadCount);
 
 // File Encryption
 void mainAesFileEncryption();
@@ -53,14 +53,14 @@ void aesKeyExpansion(u32 *cipherKey, u32 *rk, int keyLen);
 u32 arithmeticRightShift(u32 x, int n);
 
 // Inner Exhaustive Search
-void aes128ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range);
-void aes192ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range);
-void aes256ExhaustiveSearch(u32 *pt, u32 *rk, u32 *ct, u32 range);
+void aes128ExhaustiveSearch(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range);
+void aes192ExhaustiveSearch(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range);
+void aes256ExhaustiveSearch(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range);
 
 // Inner Counter Mode
-void aes128Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range);
-void aes192Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range);
-void aes256Ctr(u32 *pt, u32 *rk, u32 *ct, u32 range);
+void aes128Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range);
+void aes192Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range);
+void aes256Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range);
 
 
 static u32 T0[TABLE_SIZE] = {
