@@ -197,9 +197,6 @@ void aesNiCtrMemAlocation(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, int
 	for (;;) {
 
 		aesNiBlockEncryption(roundKeys, ptT, createdCiphertext, keySize);
-		//mtx.lock();
-		//ss++;
-		//mtx.unlock();
 
 		// Allocate ciphertext
 		for (int createdCtIndex = 0; createdCtIndex < AES_128_KEY_LEN; createdCtIndex++) {
@@ -598,16 +595,17 @@ void mainAesNiFileEncryption(string filePath, u32 keyLen, u32 threadCount) {
 		return;
 	}
 
+	// Calculate encryption boundary
+	double totalBlockSize = (double)fileSize / AES_128_KEY_LEN;
+	u32 encryptionCount = ceil(totalBlockSize);
+	u32 ciphertextSize = encryptionCount * AES_128_KEY_LEN * sizeof(u8);
+	// Allocate ciphertext
+	u8 *ct = new u8[ciphertextSize];
+
 	printf("File path           : %s\n", filePath.c_str());
 	printf("File size in bytes  : %d\n", fileSize);
 	printf("Encrypted file path : %s\n", outFilePath.c_str());
 	printf("--------------------------------------------------------------------------------\n");
-
-	double totalBlockSize = (double)fileSize / AES_128_KEY_LEN;
-	u32 encryptionCount = ceil(totalBlockSize);
-	u32 ciphertextSize = encryptionCount * AES_128_KEY_LEN * sizeof(u8);
-	u8 *ct = new u8[ciphertextSize];
-
 	printf("Total encryptions          : %d\n", encryptionCount);
 	printf("Total encryptions in byte  : %d\n", ciphertextSize);
 	printf("Thread count               : %d\n", threadCount);

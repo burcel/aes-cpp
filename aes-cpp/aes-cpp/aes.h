@@ -47,7 +47,7 @@ void mainAes256ExhaustiveSearch(u32 power, u32 threadCount);
 void mainAes256Ctr(u32 power, u32 threadCount);
 
 // File Encryption
-void mainAesFileEncryption();
+void mainAesFileEncryption(std::string filePath, u32 keyLen, u32 threadCount);
 
 void aesKeyExpansion(u32 *cipherKey, u32 *rk, int keyLen);
 u32 arithmeticRightShift(u32 x, int n);
@@ -61,7 +61,9 @@ void aes256ExhaustiveSearch(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range
 void aes128Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range);
 void aes192Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range);
 void aes256Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range);
-
+void aes128CtrMemAlocation(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range, u32 threadCount);
+void aes192CtrMemAlocation(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range, u32 threadCount);
+void aes256CtrMemAlocation(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range, u32 threadCount);
 
 static u32 T0[TABLE_SIZE] = {
 	0xc66363a5U, 0xf87c7c84U, 0xee777799U, 0xf67b7b8dU,

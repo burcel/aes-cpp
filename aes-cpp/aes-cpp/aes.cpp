@@ -769,6 +769,228 @@ void aes256Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 	}
 }
 
+void aes128CtrMemAlocation(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range, u32 threadCount) {
+
+	u32 ctIndex = 0;
+	u32 pt0Init, pt1Init, pt2Init, pt3Init;
+	u32 s0, s1, s2, s3;
+	pt0Init = pt[0];
+	pt1Init = pt[1];
+	pt2Init = pt[2];
+	pt3Init = pt[3];
+
+	// Increment plaintext to thread index position
+	ctIndex += threadIndex;
+	pt3Init += threadIndex;
+	if (pt3Init < threadIndex) {
+		pt2Init++;
+	}
+
+	for (;;) {
+
+		// Create plaintext as 32 bit unsigned integers
+		s0 = pt0Init;
+		s1 = pt1Init;
+		s2 = pt2Init;
+		s3 = pt3Init;
+
+		// First round just XORs input with key.
+		s0 = s0 ^ rk[0];
+		s1 = s1 ^ rk[1];
+		s2 = s2 ^ rk[2];
+		s3 = s3 ^ rk[3];
+
+		u32 t0, t1, t2, t3;
+		for (u8 roundCount = 0; roundCount < ROUND_COUNT_128_MIN_1; roundCount++) {
+
+			// Table based round function
+			u32 rkStart = roundCount * 4 + 4;
+			t0 = T0[s0 >> 24] ^ arithmeticRightShift(T0[(s1 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s2 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s3 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart];
+			t1 = T0[s1 >> 24] ^ arithmeticRightShift(T0[(s2 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s3 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s0 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart + 1];
+			t2 = T0[s2 >> 24] ^ arithmeticRightShift(T0[(s3 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s0 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s1 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart + 2];
+			t3 = T0[s3 >> 24] ^ arithmeticRightShift(T0[(s0 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s1 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s2 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart + 3];
+
+			s0 = t0;
+			s1 = t1;
+			s2 = t2;
+			s3 = t3;
+
+		}
+
+		// Calculate the last round key
+		// Last round uses s-box directly and XORs to produce output.
+		s0 = (T4[t0 >> 24] & 0xFF000000) ^ (T4[(t1 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t2 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t3) & 0xFF] & 0x000000FF) ^ rk[40];
+		s1 = (T4[t1 >> 24] & 0xFF000000) ^ (T4[(t2 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t3 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t0) & 0xFF] & 0x000000FF) ^ rk[41];
+		s2 = (T4[t2 >> 24] & 0xFF000000) ^ (T4[(t3 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t0 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t1) & 0xFF] & 0x000000FF) ^ rk[42];
+		s3 = (T4[t3 >> 24] & 0xFF000000) ^ (T4[(t0 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t1 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t2) & 0xFF] & 0x000000FF) ^ rk[43];
+
+		// Allocate ciphertext
+		ct[ctIndex * U32_SIZE    ] = s0;
+		ct[ctIndex * U32_SIZE + 1] = s1;
+		ct[ctIndex * U32_SIZE + 2] = s2;
+		ct[ctIndex * U32_SIZE + 3] = s3;
+
+		// Increment plaintext to thread index position
+		ctIndex += threadCount;
+		pt3Init += threadCount;
+		if (pt3Init < threadCount) {
+			pt2Init++;
+		}
+
+		if (ctIndex > range) {
+			break;
+		}
+	}
+}
+
+void aes192CtrMemAlocation(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range, u32 threadCount) {
+
+	u32 ctIndex = 0;
+	u32 pt0Init, pt1Init, pt2Init, pt3Init;
+	u32 s0, s1, s2, s3;
+	pt0Init = pt[0];
+	pt1Init = pt[1];
+	pt2Init = pt[2];
+	pt3Init = pt[3];
+
+	// Increment plaintext to thread index position
+	ctIndex += threadIndex;
+	pt3Init += threadIndex;
+	if (pt3Init < threadIndex) {
+		pt2Init++;
+	}
+
+	for (;;) {
+
+		// Create plaintext as 32 bit unsigned integers
+		s0 = pt0Init;
+		s1 = pt1Init;
+		s2 = pt2Init;
+		s3 = pt3Init;
+
+		// First round just XORs input with key.
+		s0 = s0 ^ rk[0];
+		s1 = s1 ^ rk[1];
+		s2 = s2 ^ rk[2];
+		s3 = s3 ^ rk[3];
+
+		u32 t0, t1, t2, t3;
+		for (u8 roundCount = 0; roundCount < ROUND_COUNT_192_MIN_1; roundCount++) {
+
+			// Table based round function
+			u32 rkStart = roundCount * 4 + 4;
+			t0 = T0[s0 >> 24] ^ arithmeticRightShift(T0[(s1 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s2 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s3 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart];
+			t1 = T0[s1 >> 24] ^ arithmeticRightShift(T0[(s2 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s3 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s0 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart + 1];
+			t2 = T0[s2 >> 24] ^ arithmeticRightShift(T0[(s3 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s0 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s1 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart + 2];
+			t3 = T0[s3 >> 24] ^ arithmeticRightShift(T0[(s0 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s1 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s2 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart + 3];
+
+			s0 = t0;
+			s1 = t1;
+			s2 = t2;
+			s3 = t3;
+
+		}
+
+		// Calculate the last round key
+		// Last round uses s-box directly and XORs to produce output.
+		s0 = (T4[t0 >> 24] & 0xFF000000) ^ (T4[(t1 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t2 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t3) & 0xFF] & 0x000000FF) ^ rk[48];
+		s1 = (T4[t1 >> 24] & 0xFF000000) ^ (T4[(t2 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t3 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t0) & 0xFF] & 0x000000FF) ^ rk[49];
+		s2 = (T4[t2 >> 24] & 0xFF000000) ^ (T4[(t3 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t0 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t1) & 0xFF] & 0x000000FF) ^ rk[50];
+		s3 = (T4[t3 >> 24] & 0xFF000000) ^ (T4[(t0 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t1 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t2) & 0xFF] & 0x000000FF) ^ rk[51];
+
+		// Allocate ciphertext
+		ct[ctIndex * U32_SIZE] = s0;
+		ct[ctIndex * U32_SIZE + 1] = s1;
+		ct[ctIndex * U32_SIZE + 2] = s2;
+		ct[ctIndex * U32_SIZE + 3] = s3;
+
+		// Increment plaintext to thread index position
+		ctIndex += threadCount;
+		pt3Init += threadCount;
+		if (pt3Init < threadCount) {
+			pt2Init++;
+		}
+
+		if (ctIndex > range) {
+			break;
+		}
+	}
+}
+
+void aes256CtrMemAlocation(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range, u32 threadCount) {
+
+	u32 ctIndex = 0;
+	u32 pt0Init, pt1Init, pt2Init, pt3Init;
+	u32 s0, s1, s2, s3;
+	pt0Init = pt[0];
+	pt1Init = pt[1];
+	pt2Init = pt[2];
+	pt3Init = pt[3];
+
+	// Increment plaintext to thread index position
+	ctIndex += threadIndex;
+	pt3Init += threadIndex;
+	if (pt3Init < threadIndex) {
+		pt2Init++;
+	}
+
+	for (;;) {
+
+		// Create plaintext as 32 bit unsigned integers
+		s0 = pt0Init;
+		s1 = pt1Init;
+		s2 = pt2Init;
+		s3 = pt3Init;
+
+		// First round just XORs input with key.
+		s0 = s0 ^ rk[0];
+		s1 = s1 ^ rk[1];
+		s2 = s2 ^ rk[2];
+		s3 = s3 ^ rk[3];
+
+		u32 t0, t1, t2, t3;
+		for (u8 roundCount = 0; roundCount < ROUND_COUNT_256_MIN_1; roundCount++) {
+
+			// Table based round function
+			u32 rkStart = roundCount * 4 + 4;
+			t0 = T0[s0 >> 24] ^ arithmeticRightShift(T0[(s1 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s2 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s3 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart];
+			t1 = T0[s1 >> 24] ^ arithmeticRightShift(T0[(s2 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s3 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s0 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart + 1];
+			t2 = T0[s2 >> 24] ^ arithmeticRightShift(T0[(s3 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s0 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s1 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart + 2];
+			t3 = T0[s3 >> 24] ^ arithmeticRightShift(T0[(s0 >> 16) & 0xFF], SHIFT_1_RIGHT) ^ arithmeticRightShift(T0[(s1 >> 8) & 0xFF], SHIFT_2_RIGHT) ^ arithmeticRightShift(T0[s2 & 0xFF], SHIFT_3_RIGHT) ^ rk[rkStart + 3];
+
+			s0 = t0;
+			s1 = t1;
+			s2 = t2;
+			s3 = t3;
+
+		}
+
+		// Calculate the last round key
+		// Last round uses s-box directly and XORs to produce output.
+		s0 = (T4[t0 >> 24] & 0xFF000000) ^ (T4[(t1 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t2 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t3) & 0xFF] & 0x000000FF) ^ rk[56];
+		s1 = (T4[t1 >> 24] & 0xFF000000) ^ (T4[(t2 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t3 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t0) & 0xFF] & 0x000000FF) ^ rk[57];
+		s2 = (T4[t2 >> 24] & 0xFF000000) ^ (T4[(t3 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t0 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t1) & 0xFF] & 0x000000FF) ^ rk[58];
+		s3 = (T4[t3 >> 24] & 0xFF000000) ^ (T4[(t0 >> 16) & 0xff] & 0x00FF0000) ^ (T4[(t1 >> 8) & 0xff] & 0x0000FF00) ^ (T4[(t2) & 0xFF] & 0x000000FF) ^ rk[59];
+
+		// Allocate ciphertext
+		ct[ctIndex * U32_SIZE] = s0;
+		ct[ctIndex * U32_SIZE + 1] = s1;
+		ct[ctIndex * U32_SIZE + 2] = s2;
+		ct[ctIndex * U32_SIZE + 3] = s3;
+
+		// Increment plaintext to thread index position
+		ctIndex += threadCount;
+		pt3Init += threadCount;
+		if (pt3Init < threadCount) {
+			pt2Init++;
+		}
+
+		if (ctIndex > range) {
+			break;
+		}
+	}
+}
+
 void mainAes128ExhaustiveSearch(u32 power, u32 threadCount) {
 	printf("--------------------------------------------------------------------------------\n");
 	printf("         ########## AES - 128 Exhaustive Search Implementation ##########       \n");
@@ -1130,18 +1352,15 @@ void mainAes256Ctr(u32 power, u32 threadCount) {
 	delete[] threadArray;
 }
 
-void mainAesFileEncryption() {
-	printf("---------------------------------------------------------------------------\n");
-	printf("           ########## AES File Encryption Implementation ##########        \n");
-	printf("---------------------------------------------------------------------------\n\n");
+void mainAesFileEncryption(string filePath, u32 keyLen, u32 threadCount) {
+	printf("--------------------------------------------------------------------------------\n");
+	printf("              ########## AES File Encryption Implementation ##########          \n");
+	printf("--------------------------------------------------------------------------------\n\n");
 
-	// Options
+	// Inputs
 	int chunkSize = 1024;
-	const string filePath = "C://file-encryption-test//william3.mp4";
-	int keyLen = AES_128_KEY_LEN_INT;
-
+	string outFilePath = filePath + "_ENC";
 	u32 pt[AES_128_KEY_LEN_INT], rk128[AES_128_KEY_LEN_INT], rk192[AES_192_KEY_LEN_INT], rk256[AES_256_KEY_LEN_INT];
-
 	pt[0] = 0x3243F6A8U;
 	pt[1] = 0x885A308DU;
 	pt[2] = 0x313198A2U;
@@ -1168,135 +1387,147 @@ void mainAesFileEncryption() {
 	rk256[6] = 0x2d9810a3U;
 	rk256[7] = 0x0914dff4U;
 
+	// Open file
+	u32 fileSize;
 	fstream fileIn(filePath, fstream::in | fstream::binary);
 	if (fileIn) {
 		// Get file size
 		fileIn.seekg(0, fileIn.end);
-		int fileSize = fileIn.tellg();
+		fileSize = fileIn.tellg();
 		fileIn.seekg(0, fileIn.beg);
-		printf("File: %s\n", filePath.c_str());
-		printf("Size in bytes: %d\n", fileSize);
-		printf("-------------------------------\n");
-
-		// Calculate encryption boundary
-		double totalBlockSize = (double)fileSize / (AES_128_KEY_LEN_INT * U32_SIZE);
-		u32 encryptionCount = ceil(totalBlockSize);
-		u32 ciphertextSize = encryptionCount * U32_SIZE;
-
-		printf("Total encryptions             : %d\n", encryptionCount);
-		printf("Total encryptions in byte     : %d\n", ciphertextSize);
-		printf("-------------------------------\n");
-		u32 *rk;
-		int keySize;
-		if (keyLen == AES_128_KEY_LEN_INT) {
-			rk = rk128;
-			keySize = AES_128_KEY_SIZE_INT;
-			printf("Initial Key (%d byte)  : %08x %08x %08x %08x\n", AES_128_KEY_LEN_INT * U32_SIZE, rk[0], rk[1], rk[2], rk[3]);
-		} else if (keyLen == AES_192_KEY_LEN_INT) {
-			rk = rk192;
-			keySize = AES_192_KEY_SIZE_INT;
-			printf("Initial Key (%d byte)  : %08x %08x %08x %08x %08x %08x\n", AES_192_KEY_LEN_INT * U32_SIZE, rk[0], rk[1], rk[2], rk[3], rk[4], rk[5]);
-		} else if (keyLen == AES_256_KEY_LEN_INT) {
-			rk = rk256;
-			keySize = AES_256_KEY_SIZE_INT;
-			printf("Initial Key (%d byte)  : %08x %08x %08x %08x %08x %08x %08x %08x\n", AES_256_KEY_LEN_INT * U32_SIZE, rk[0], rk[1], rk[2], rk[3], rk[4], rk[5], rk[6], rk[7]);
-		} else {
-			return;
-		}
-		printf("Initial Counter        : %08x %08x %08x %08x\n", pt[0], pt[1], pt[2], pt[3]);
-		printf("-------------------------------\n");
-
-		// Prepare round keys
-		u32 *roundKeys = new u32[keySize];
-		aesKeyExpansion(rk, roundKeys, keyLen);
-		// Allocate ciphertext
-		u32 *ct = new u32[ciphertextSize];
-
-		clock_t beginTime = clock();
-
-		if (keyLen == AES_128_KEY_LEN_INT) {
-			aes128Ctr(0, pt, roundKeys, ct, encryptionCount);
-		} else if (keyLen == AES_192_KEY_LEN_INT) {
-			aes192Ctr(0, pt, roundKeys, ct, encryptionCount);
-		} else if (keyLen == AES_256_KEY_LEN_INT) {
-			aes256Ctr(0, pt, roundKeys, ct, encryptionCount);
-		}
-
-		printf("-------------------------------\n");
-		printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
-		printf("-------------------------------\n");
-
-		beginTime = clock();
-		// Open output file
-		const std::string outFilePath = filePath + "_ENC";
-		printf("Encrypted File: %s\n", outFilePath.c_str());
-		printf("-------------------------------\n");
-		std::fstream fileOut(outFilePath, std::fstream::out | std::fstream::binary);
-		u32 cipherTextIndex = 0;
-		// Allocate file buffer
-		char * buffer = new char[chunkSize];
-		while (1) {
-			// Read data as a block into buffer:
-			fileIn.read(buffer, chunkSize);
-			// Decide whether buffer is at the last part
-			long readByte = 0;
-			if (fileIn) {
-				// All characters read successfully
-				readByte = chunkSize;
-			} else {
-				// Only readByte characters could be read
-				readByte = fileIn.gcount();
-			}
-			// Process current buffer
-			u32 readInt = 0;
-			for (int bufferIndex = 0; bufferIndex < readByte; bufferIndex++) {
-				// Process 4 byte as integers
-				int bufferIntIndex = (bufferIndex + 1) % U32_SIZE;
-				if (bufferIntIndex == 0) {
-					// Change 4 byte to int
-					readInt = 0;
-					readInt |= (0x000000FF & buffer[bufferIndex - 3]) << 24;
-					readInt |= (0x000000FF & buffer[bufferIndex - 2]) << 16;
-					readInt |= (0x000000FF & buffer[bufferIndex - 1]) << 8;
-					readInt |= (0x000000FF & buffer[bufferIndex]);
-					// XOR with ciphertext
-					readInt ^= ct[cipherTextIndex++];
-					// TODO: bug-fix -> create ctIndex and increment here 
-					// Change 4 byte back to char
-					buffer[bufferIndex - 3] = readInt >> 24;
-					buffer[bufferIndex - 2] = readInt >> 16;
-					buffer[bufferIndex - 1] = readInt >> 8;
-					buffer[bufferIndex] = readInt;
-				} else if (bufferIndex == readByte - 1) {
-					// Change bufferIntIndex byte to int
-					readInt = 0;
-					for (int extraByteIndex = 0; extraByteIndex < bufferIntIndex; extraByteIndex++) {
-						readInt |= (0x000000FF & buffer[bufferIndex - bufferIntIndex + extraByteIndex + 1]) << ((U32_SIZE - 1 - extraByteIndex) * 8);
-					}
-					// XOR with ciphertext
-					readInt ^= ct[cipherTextIndex++];
-					// Change bufferIntIndex byte back to char
-					for (int extraByteIndex = 0; extraByteIndex < bufferIntIndex; extraByteIndex++) {
-						buffer[bufferIndex - bufferIntIndex + extraByteIndex + 1] = readInt >> (U32_SIZE - 1 - extraByteIndex) * 8;
-					}
-				}
-			}
-			// Write buffer to output file
-			fileOut.write(buffer, readByte);
-			// stop
-			if (readByte < chunkSize) {
-				break;
-			}
-		}
-
-		printf("Time elapsed: %f sec\n", float(clock() - beginTime) / CLOCKS_PER_SEC);
-		printf("-------------------------------\n");
-
-		delete[] buffer;
-		delete[] ct;
-		fileOut.close();
 	} else {
 		printf("File could not be opened: %s\n", filePath.c_str());
+		return;
 	}
 
+	// Calculate encryption boundary
+	double totalBlockSize = (double)fileSize / (AES_128_KEY_LEN_INT * U32_SIZE);
+	u32 encryptionCount = ceil(totalBlockSize);
+	u32 ciphertextSize = encryptionCount * U32_SIZE;
+	// Allocate ciphertext
+	u32 *ct = new u32[ciphertextSize];
+
+	printf("File path           : %s\n", filePath.c_str());
+	printf("File size in bytes  : %d\n", fileSize);
+	printf("Encrypted file path : %s\n", outFilePath.c_str());
+	printf("--------------------------------------------------------------------------------\n");
+	printf("Total encryptions          : %d\n", encryptionCount);
+	printf("Total encryptions in byte  : %d\n", ciphertextSize);
+	printf("Thread count               : %d\n", threadCount);
+	printf("Each thread encryptions    : %.2f\n", encryptionCount / (double)threadCount);
+	printf("--------------------------------------------------------------------------------\n");
+	u32 *rk;
+	int keySize;
+	if (keyLen == AES_128_KEY_LEN_INT) {
+		rk = rk128;
+		keySize = AES_128_KEY_SIZE_INT;
+		printf("Initial Key (%d byte)  : %08x %08x %08x %08x\n", AES_128_KEY_LEN_INT * U32_SIZE, rk[0], rk[1], rk[2], rk[3]);
+	} else if (keyLen == AES_192_KEY_LEN_INT) {
+		rk = rk192;
+		keySize = AES_192_KEY_SIZE_INT;
+		printf("Initial Key (%d byte)  : %08x %08x %08x %08x %08x %08x\n", AES_192_KEY_LEN_INT * U32_SIZE, rk[0], rk[1], rk[2], rk[3], rk[4], rk[5]);
+	} else if (keyLen == AES_256_KEY_LEN_INT) {
+		rk = rk256;
+		keySize = AES_256_KEY_SIZE_INT;
+		printf("Initial Key (%d byte)  : %08x %08x %08x %08x %08x %08x %08x %08x\n", AES_256_KEY_LEN_INT * U32_SIZE, rk[0], rk[1], rk[2], rk[3], rk[4], rk[5], rk[6], rk[7]);
+	} else {
+		return;
+	}
+	printf("Initial Counter        : %08x %08x %08x %08x\n", pt[0], pt[1], pt[2], pt[3]);
+	printf("--------------------------------------------------------------------------------\n");
+
+	// Prepare round keys
+	u32 *roundKeys = new u32[keySize];
+	aesKeyExpansion(rk, roundKeys, keyLen);
+
+
+	// Starting threads
+	clock_t beginTimeEncryption = clock();
+	thread *threadArray = new thread[threadCount];
+	for (u8 threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		if (keyLen == AES_128_KEY_LEN_INT) {
+			threadArray[threadIndex] = thread(aes128CtrMemAlocation, threadIndex, pt, roundKeys, ct, encryptionCount, threadCount);
+		} else if (keyLen == AES_192_KEY_LEN_INT) {
+			threadArray[threadIndex] = thread(aes192CtrMemAlocation, threadIndex, pt, roundKeys, ct, encryptionCount, threadCount);
+		} else if (keyLen == AES_256_KEY_LEN_INT) {
+			threadArray[threadIndex] = thread(aes256CtrMemAlocation, threadIndex, pt, roundKeys, ct, encryptionCount, threadCount);
+		}
+	}
+
+	// Waiting threads
+	for (int threadIndex = 0; threadIndex < threadCount; threadIndex++) {
+		threadArray[threadIndex].join();
+	}
+
+	// Calculate time spent for encryption
+	float timeSpent = float(clock() - beginTimeEncryption) / CLOCKS_PER_SEC;
+	printf("Time elapsed (Encryption) : %f sec\n", timeSpent);
+
+	// Open output file
+	clock_t beginTimeFileWrite = clock();
+	std::fstream fileOut(outFilePath, std::fstream::out | std::fstream::binary);
+	u32 cipherTextIndex = 0;
+	// Allocate file buffer
+	char * buffer = new char[chunkSize];
+	while (1) {
+		// Read data as a block into buffer:
+		fileIn.read(buffer, chunkSize);
+		// Decide whether buffer is at the last part
+		long readByte = 0;
+		if (fileIn) {
+			// All characters read successfully
+			readByte = chunkSize;
+		} else {
+			// Only readByte characters could be read
+			readByte = fileIn.gcount();
+		}
+		// Process current buffer
+		u32 readInt = 0;
+		for (int bufferIndex = 0; bufferIndex < readByte; bufferIndex++) {
+			// Process 4 byte as integers
+			int bufferIntIndex = (bufferIndex + 1) % U32_SIZE;
+			if (bufferIntIndex == 0) {
+				// Change 4 byte to int
+				readInt = 0;
+				readInt |= (0x000000FF & buffer[bufferIndex - 3]) << 24;
+				readInt |= (0x000000FF & buffer[bufferIndex - 2]) << 16;
+				readInt |= (0x000000FF & buffer[bufferIndex - 1]) << 8;
+				readInt |= (0x000000FF & buffer[bufferIndex]);
+				// XOR with ciphertext
+				readInt ^= ct[cipherTextIndex++];
+				// TODO: bug-fix -> create ctIndex and increment here 
+				// Change 4 byte back to char
+				buffer[bufferIndex - 3] = readInt >> 24;
+				buffer[bufferIndex - 2] = readInt >> 16;
+				buffer[bufferIndex - 1] = readInt >> 8;
+				buffer[bufferIndex] = readInt;
+			} else if (bufferIndex == readByte - 1) {
+				// Change bufferIntIndex byte to int
+				readInt = 0;
+				for (int extraByteIndex = 0; extraByteIndex < bufferIntIndex; extraByteIndex++) {
+					readInt |= (0x000000FF & buffer[bufferIndex - bufferIntIndex + extraByteIndex + 1]) << ((U32_SIZE - 1 - extraByteIndex) * 8);
+				}
+				// XOR with ciphertext
+				readInt ^= ct[cipherTextIndex++];
+				// Change bufferIntIndex byte back to char
+				for (int extraByteIndex = 0; extraByteIndex < bufferIntIndex; extraByteIndex++) {
+					buffer[bufferIndex - bufferIntIndex + extraByteIndex + 1] = readInt >> (U32_SIZE - 1 - extraByteIndex) * 8;
+				}
+			}
+		}
+		// Write buffer to output file
+		fileOut.write(buffer, readByte);
+		// stop
+		if (readByte < chunkSize) {
+			break;
+		}
+	}
+	// Calculate time spent for writing file
+	timeSpent = float(clock() - beginTimeFileWrite) / CLOCKS_PER_SEC;
+	printf("Time elapsed (File write) : %f sec\n", timeSpent);
+
+	delete[] buffer;
+	delete[] ct;
+	fileIn.close();
+	fileOut.close();
 }
