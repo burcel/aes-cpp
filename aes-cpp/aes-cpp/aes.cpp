@@ -607,10 +607,6 @@ void aes128Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 
 		pt3Init++;
 
-		if (threadIndex == 0 && rangeCount == 0) {
-			printf("First Ciphertext : %08x %08x %08x %08x\n", s0, s1, s2, s3);
-		}
-
 		// Allocate ciphertext
 		if (ct != nullptr) {
 			ct[ctIndex++] = s0;
@@ -618,6 +614,10 @@ void aes128Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 			ct[ctIndex++] = s2;
 			ct[ctIndex++] = s3;
 		}
+	}
+
+	if (threadIndex == 0) {
+		printf("First Ciphertext : %08x %08x %08x %08x\n", s0, s1, s2, s3);
 	}
 }
 
@@ -681,10 +681,6 @@ void aes192Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 		// Create key as 32 bit unsigned integers
 		pt3Init++;
 
-		if (threadIndex == 0 && rangeCount == 0) {
-			printf("First Ciphertext : %08x %08x %08x %08x\n", s0, s1, s2, s3);
-		}
-
 		// Allocate ciphertext
 		if (ct != nullptr) {
 			ct[ctIndex++] = s0;
@@ -692,6 +688,10 @@ void aes192Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 			ct[ctIndex++] = s2;
 			ct[ctIndex++] = s3;
 		}
+	}
+
+	if (threadIndex == 0) {
+		printf("First Ciphertext : %08x %08x %08x %08x\n", s0, s1, s2, s3);
 	}
 }
 
@@ -755,10 +755,6 @@ void aes256Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 		// Create key as 32 bit unsigned integers
 		pt3Init++;
 
-		if (threadIndex == 0 && rangeCount == 0) {
-			printf("First Ciphertext : %08x %08x %08x %08x\n", s0, s1, s2, s3);
-		}
-
 		// Allocate ciphertext
 		if (ct != nullptr) {
 			ct[ctIndex++] = s0;
@@ -766,6 +762,10 @@ void aes256Ctr(u8 threadIndex, u32 *pt, u32 *rk, u32 *ct, u32 range) {
 			ct[ctIndex++] = s2;
 			ct[ctIndex++] = s3;
 		}
+	}
+
+	if (threadIndex == 0) {
+		printf("First Ciphertext : %08x %08x %08x %08x\n", s0, s1, s2, s3);
 	}
 }
 
@@ -1408,7 +1408,7 @@ void mainAesFileEncryption(string filePath, u32 keyLen, u32 threadCount) {
 	u32 *ct = new u32[ciphertextSize];
 
 	printf("File path           : %s\n", filePath.c_str());
-	printf("File size in bytes  : %d\n", fileSize);
+	printf("File size in bytes  : %u\n", fileSize);
 	printf("Encrypted file path : %s\n", outFilePath.c_str());
 	printf("--------------------------------------------------------------------------------\n");
 	printf("Total encryptions          : %d\n", encryptionCount);

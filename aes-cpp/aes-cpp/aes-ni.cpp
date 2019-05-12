@@ -164,15 +164,13 @@ void aesNiCtr(u8 threadIndex, u8 *pt, u8 *rk, u32 range, int keySize, int keyLen
 	}
 
 	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
-
 		aesNiBlockEncryption(roundKeys, ptT, createdCiphertext, keySize);
-
-		if (threadIndex == 0 && rangeCount == 0) {
-			printf("Plaintext     :"); printHex(ptT, AES_128_KEY_LEN);
-			printf("Ciphertext    :"); printHex(createdCiphertext, AES_128_KEY_LEN);
-		}
-
 		incrementByteArray(ptT, AES_128_KEY_LEN);
+	}
+
+	if (threadIndex == 0) {
+		printf("Plaintext     :"); printHex(ptT, AES_128_KEY_LEN);
+		printf("Ciphertext    :"); printHex(createdCiphertext, AES_128_KEY_LEN);
 	}
 
 	delete[] ptT;
@@ -603,7 +601,7 @@ void mainAesNiFileEncryption(string filePath, u32 keyLen, u32 threadCount) {
 	u8 *ct = new u8[ciphertextSize];
 
 	printf("File path           : %s\n", filePath.c_str());
-	printf("File size in bytes  : %d\n", fileSize);
+	printf("File size in bytes  : %u\n", fileSize);
 	printf("Encrypted file path : %s\n", outFilePath.c_str());
 	printf("--------------------------------------------------------------------------------\n");
 	printf("Total encryptions          : %d\n", encryptionCount);
