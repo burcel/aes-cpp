@@ -14,6 +14,9 @@ using namespace std;
 #define KEYEXP256(K1, K2, I)  KEYEXP128_H(K1, K2, I, 0xff)
 #define KEYEXP256_2(K1, K2) KEYEXP128_H(K1, K2, 0x00, 0xaa)
 
+__m128i BSWAP_EPI64 = _mm_setr_epi8(7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8);
+__m128i ONE = _mm_set_epi32(0, 1, 0, 0);
+
 __m128i aes128KeyExpand(__m128i key) {
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
 	key = _mm_xor_si128(key, _mm_slli_si128(key, 4));
@@ -26,11 +29,10 @@ __m128i aes192KeyExpand2(__m128i key, __m128i key2) {
 	return _mm_xor_si128(key, key2);
 }
 
-void aesNiKeyExpansion(u8 *cipherKey, __m128i *rk, int keyLen) {
+void aesNiKeyExpansion(__m128i *rkT, __m128i *rk, int keyLen) {
 	switch (keyLen) {
 		case AES_128_KEY_LEN: {
-			/* 128 bit key setup */
-			rk[0] = _mm_loadu_si128((const __m128i*) cipherKey);
+			rk[0] = rkT[0];
 			rk[1] = KEYEXP128(rk[0], 0x01);
 			rk[2] = KEYEXP128(rk[1], 0x02);
 			rk[3] = KEYEXP128(rk[2], 0x04);
@@ -44,10 +46,9 @@ void aesNiKeyExpansion(u8 *cipherKey, __m128i *rk, int keyLen) {
 			break;
 		}
 		case AES_192_KEY_LEN: {
-			/* 192 bit key setup */
 			__m128i temp[2];
-			rk[0] = _mm_loadu_si128((const __m128i*) cipherKey);
-			rk[1] = _mm_loadu_si128((const __m128i*) (cipherKey + 16));
+			rk[0] = rkT[0];
+			rk[1] = rkT[1];
 			temp[0] = KEYEXP192(rk[0], rk[1], 0x01);
 			temp[1] = KEYEXP192_2(temp[0], rk[1]);
 			rk[1] = _mm_castpd_si128(_mm_shuffle_pd(_mm_castsi128_pd(rk[1]), _mm_castsi128_pd(temp[0]), 0));
@@ -74,9 +75,8 @@ void aesNiKeyExpansion(u8 *cipherKey, __m128i *rk, int keyLen) {
 			break;
 		}
 		case AES_256_KEY_LEN: {
-			/* 256 bit key setup */
-			rk[0] = _mm_loadu_si128((const __m128i*) cipherKey);
-			rk[1] = _mm_loadu_si128((const __m128i*) (cipherKey + 16));
+			rk[0] = rkT[0];
+			rk[1] = rkT[1];
 			rk[2] = KEYEXP256(rk[0], rk[1], 0x01);
 			rk[3] = KEYEXP256_2(rk[1], rk[2]);
 			rk[4] = KEYEXP256(rk[2], rk[3], 0x02);
@@ -95,55 +95,54 @@ void aesNiKeyExpansion(u8 *cipherKey, __m128i *rk, int keyLen) {
 	}
 }
 
-void aesNiBlockEncryption(__m128i *rk, u8 *pt, u8 *ct, int keySize) {
-	__m128i m = _mm_loadu_si128((__m128i *) pt);
-	m = _mm_xor_si128(m, rk[0]);
-	m = _mm_aesenc_si128(m, rk[1]);
-	m = _mm_aesenc_si128(m, rk[2]);
-	m = _mm_aesenc_si128(m, rk[3]);
-	m = _mm_aesenc_si128(m, rk[4]);
-	m = _mm_aesenc_si128(m, rk[5]);
-	m = _mm_aesenc_si128(m, rk[6]);
-	m = _mm_aesenc_si128(m, rk[7]);
-	m = _mm_aesenc_si128(m, rk[8]);
-	m = _mm_aesenc_si128(m, rk[9]);
+void aesNiBlockEncryption(__m128i *rk, __m128i pt, u8 *ct, int keySize) {
+	pt = _mm_xor_si128(pt, rk[0]);
+	pt = _mm_aesenc_si128(pt, rk[1]);
+	pt = _mm_aesenc_si128(pt, rk[2]);
+	pt = _mm_aesenc_si128(pt, rk[3]);
+	pt = _mm_aesenc_si128(pt, rk[4]);
+	pt = _mm_aesenc_si128(pt, rk[5]);
+	pt = _mm_aesenc_si128(pt, rk[6]);
+	pt = _mm_aesenc_si128(pt, rk[7]);
+	pt = _mm_aesenc_si128(pt, rk[8]);
+	pt = _mm_aesenc_si128(pt, rk[9]);
 	if (keySize == AES_192_KEY_SIZE || keySize == AES_256_KEY_SIZE) {
-		m = _mm_aesenc_si128(m, rk[10]);
-		m = _mm_aesenc_si128(m, rk[11]);
+		pt = _mm_aesenc_si128(pt, rk[10]);
+		pt = _mm_aesenc_si128(pt, rk[11]);
 		if (keySize == AES_256_KEY_SIZE) {
-			m = _mm_aesenc_si128(m, rk[12]);
-			m = _mm_aesenc_si128(m, rk[13]);
+			pt = _mm_aesenc_si128(pt, rk[12]);
+			pt = _mm_aesenc_si128(pt, rk[13]);
 		}
 	}
-
-	m = _mm_aesenclast_si128(m, rk[keySize-1]);
-
-	_mm_storeu_si128((__m128i *) ct, m);
+	pt = _mm_aesenclast_si128(pt, rk[keySize-1]);
+	_mm_storeu_si128((__m128i *) ct, pt);
 }
 
 void aesNiExhaustiveSearch(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, int keySize, int keyLen) {
 
 	u8 createdCiphertext[AES_128_KEY_LEN];
+	__m128i *rkT = new __m128i[2];
 	__m128i *roundKeys = new __m128i[keySize];
-	u8 *rkT = new u8[keyLen];
-	// Create a copy of round key array
-	memcpy(rkT, rk, sizeof(u8)*keyLen);
+	__m128i ptT = _mm_loadu_si128((__m128i *) pt);
+
+	loadKey(rk, rkT, keyLen);
+	
 	// Increment round key to thread index position
 	for (int increment = 0; increment < range*threadIndex; increment++) {
-		incrementByteArray(rkT, keyLen);
+		incrementKey(rkT, keyLen);
 	}
 
 	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
 
 		aesNiKeyExpansion(rkT, roundKeys, keyLen);
-		aesNiBlockEncryption(roundKeys, pt, createdCiphertext, keySize);
+		aesNiBlockEncryption(roundKeys, ptT, createdCiphertext, keySize);
 
 		if (memcmp(ct, createdCiphertext, sizeof(ct)) == 0) {
 			printf("! Key is found: \n");
-			printHex(rkT, keyLen);
+			printKey(rkT, keyLen);
 		}
 
-		incrementByteArray(rkT, keyLen);
+		incrementKey(rkT, keyLen);
 	}
 
 	delete[] rkT;
@@ -153,27 +152,29 @@ void aesNiExhaustiveSearch(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, in
 void aesNiCtr(u8 threadIndex, u8 *pt, u8 *rk, u32 range, int keySize, int keyLen) {
 
 	u8 createdCiphertext[AES_128_KEY_LEN];
+	__m128i *rkT = new __m128i[2];
 	__m128i *roundKeys = new __m128i[keySize];
-	aesNiKeyExpansion(rk, roundKeys, keyLen);
-	u8 *ptT = new u8[AES_128_KEY_LEN];
-	// Create a copy of plaintext array
-	memcpy(ptT, pt, sizeof(u8)*AES_128_KEY_LEN);
+	__m128i ptT = _mm_loadu_si128((__m128i *) pt);
+
+	loadKey(rk, rkT, keyLen);
+	aesNiKeyExpansion(rkT, roundKeys, keyLen);
+	
 	// Increment plaintext to thread index position
 	for (int increment = 0; increment < range*threadIndex; increment++) {
-		incrementByteArray(ptT, AES_128_KEY_LEN);
+		incrementM128i(ptT);
 	}
 
 	for (int rangeCount = 0; rangeCount < range; rangeCount++) {
 		aesNiBlockEncryption(roundKeys, ptT, createdCiphertext, keySize);
-		incrementByteArray(ptT, AES_128_KEY_LEN);
+		incrementM128i(ptT);
 	}
 
 	if (threadIndex == 0) {
-		printf("Plaintext     :"); printHex(ptT, AES_128_KEY_LEN);
+		printf("Plaintext     :"); printM128i(ptT);
 		printf("Ciphertext    :"); printHex(createdCiphertext, AES_128_KEY_LEN);
 	}
 
-	delete[] ptT;
+	delete[] rkT;
 	delete[] roundKeys;
 }
 
@@ -181,14 +182,16 @@ void aesNiCtrMemAlocation(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, int
 
 	u32 ctIndex = 0;
 	u8 createdCiphertext[AES_128_KEY_LEN];
+	__m128i *rkT = new __m128i[2];
 	__m128i *roundKeys = new __m128i[keySize];
-	aesNiKeyExpansion(rk, roundKeys, keyLen);
-	u8 *ptT = new u8[AES_128_KEY_LEN];
-	// Create a copy of plaintext array
-	memcpy(ptT, pt, sizeof(u8)*AES_128_KEY_LEN);
+	__m128i ptT = _mm_loadu_si128((__m128i *) pt);
+
+	loadKey(rk, rkT, keyLen);
+	aesNiKeyExpansion(rkT, roundKeys, keyLen);
+
 	// Increment plaintext to thread index position
 	for (int increment = 0; increment < threadIndex; increment++) {
-		incrementByteArray(ptT, AES_128_KEY_LEN);
+		incrementM128i(ptT);
 		ctIndex++;
 	}
 	
@@ -203,7 +206,7 @@ void aesNiCtrMemAlocation(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, int
 
 		// Increment plaintext to thread index position
 		for (int increment = 0; increment < threadCount; increment++) {
-			incrementByteArray(ptT, AES_128_KEY_LEN);
+			incrementM128i(ptT);
 			ctIndex++;
 		}
 
@@ -212,7 +215,6 @@ void aesNiCtrMemAlocation(u8 threadIndex, u8 *pt, u8 *rk, u8 *ct, u32 range, int
 		}
 	}
 
-	delete[] ptT;
 	delete[] roundKeys;
 }
 
@@ -240,10 +242,98 @@ void incrementByteArray(u8 *rk, int keyLen) {
 	}
 }
 
-void incrementM128i(__m128i var) {
-	var = reverseBytesM128i(var);
-	//var++;
-	var = reverseBytesM128i(var);
+void loadKey(u8 *rk, __m128i *rkT, int keyLen) {
+	switch (keyLen) {
+		case AES_128_KEY_LEN: {
+			rkT[0] = _mm_loadu_si128((const __m128i*) rk);
+			break;
+		}
+		case AES_192_KEY_LEN: {
+			rkT[0] = _mm_loadu_si128((const __m128i*) rk);
+			rkT[1] = _mm_loadu_si128((const __m128i*) (rk + 16));
+			break;
+		}
+		case AES_256_KEY_LEN: {
+			rkT[0] = _mm_loadu_si128((const __m128i*) rk);
+			rkT[1] = _mm_loadu_si128((const __m128i*) (rk + 16));
+			break;
+		}
+	}
+}
+
+void incrementKey(__m128i *rk, int keyLen) {
+	switch (keyLen) {
+		case AES_128_KEY_LEN: {
+			// increment by 1
+			incrementM128i(rk[0]);
+			break;
+		}
+		case AES_192_KEY_LEN: {
+			// 8 byte shift right
+			rk[1] = _mm_slli_si128(rk[1], 0x08);
+			// increment by 1
+			incrementM128i(rk[1]);
+			// 8 byte shift left
+			rk[1] = _mm_srli_si128(rk[1], 0x08);
+			break;
+		}
+		case AES_256_KEY_LEN: {
+			// increment by 1
+			incrementM128i(rk[1]);
+			break;
+		}
+	}
+}
+
+void printKey(__m128i *rk, int keyLen) {
+	switch (keyLen) {
+		case AES_128_KEY_LEN: {
+			printM128i(rk[0]);
+			break;
+		}
+		case AES_192_KEY_LEN: {
+			uint8_t *val = (uint8_t*)&rk[0];
+			for (int i = 0; i < 16; i++) {
+				printf("%02x", val[i]);
+				if (i % 4 == 3) {
+					printf(" ");
+				}
+			}
+			val = (uint8_t*)&rk[1];
+			for (int i = 0; i < 8; i++) {
+				printf("%02x", val[i]);
+				if (i % 4 == 3) {
+					printf(" ");
+				}
+			}
+			printf("\n");
+			break;
+		}
+		case AES_256_KEY_LEN: {
+			uint8_t *val = (uint8_t*)&rk[0];
+			for (int i = 0; i < 16; i++) {
+				printf("%02x", val[i]);
+				if (i % 4 == 3) {
+					printf(" ");
+				}
+			}
+			val = (uint8_t*)&rk[1];
+			for (int i = 0; i < 16; i++) {
+				printf("%02x", val[i]);
+				if (i % 4 == 3) {
+					printf(" ");
+				}
+			}
+			printf("\n");
+			break;
+		}
+	}
+}
+
+void incrementM128i(__m128i &x) {
+	x = _mm_shuffle_epi8(x, BSWAP_EPI64);
+	x = _mm_add_epi64(x, ONE);
+	x = _mm_shuffle_epi8(x, BSWAP_EPI64);
 }
 
 __m128i reverseBytesM128i(__m128i x) {
